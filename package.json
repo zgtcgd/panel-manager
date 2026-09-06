@@ -1,0 +1,16 @@
+{
+  "name": "panel-manager-SQLite",
+  "version": "1.0.0",
+  "description": "Panel—Manager—SQLite",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2"
+  }
+}
