@@ -1,5 +1,3 @@
-
-
 'use strict';
 const { e, attrJson, kaIvText, COUNTRIES } = require('./core');
 
