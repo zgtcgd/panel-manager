@@ -55,6 +55,14 @@ app.get('/', async (req, res) => {
   }
 });
 
+app.get('/guest', (req, res) => {
+  sessions.delete(req.sid);
+  const sid = crypto.randomBytes(24).toString('hex');
+  sessions.set(sid, { user: 'guest', csrf: crypto.randomBytes(16).toString('hex'), fails: 0, lastFail: 0 });
+  res.setHeader('Set-Cookie', `pmsid=${sid}; Path=/; HttpOnly; SameSite=Lax`);
+  return res.redirect('/');
+});
+
 app.get('/status', async (req, res) => {
   if (!loggedIn(req)) return res.status(401).json({ error: '未登录' });
   try {
@@ -79,7 +87,7 @@ app.post('/', async (req, res) => {
     if (hash && bcrypt.compareSync(String(req.body.password || ''), hash)) {
       req.session.user = name;
       delete req.session.fails; delete req.session.lastFail;
-
+      
       sessions.delete(req.sid);
       const sid = crypto.randomBytes(24).toString('hex');
       sessions.set(sid, { user: name, csrf: crypto.randomBytes(16).toString('hex'), fails: 0, lastFail: 0 });
@@ -99,6 +107,8 @@ app.post('/', async (req, res) => {
   }
 
   if (!loggedIn(req)) return res.redirect('/');
+  
+  if (req.session.user === 'guest') return res.redirect('/');
   if (!verifyCsrf(req)) return;
   const b = req.body;
   const db = getDB();
@@ -181,7 +191,7 @@ app.post('/', async (req, res) => {
             const del = db.prepare('DELETE FROM pm_group_members WHERE group_id = ?');
             const ins = db.prepare('INSERT INTO pm_group_members (group_id, client_id, sort_order) VALUES (?, ?, ?)');
             for (const [gid, ids] of Object.entries(membership)) {
-              if (gid === '') continue;
+              if (gid === '') continue; 
               del.run(gid);
               (Array.isArray(ids) ? ids.map(String) : []).forEach((cid, i) => ins.run(gid, cid, i));
             }
@@ -221,7 +231,7 @@ app.post('/', async (req, res) => {
         if (id !== '') {
           db.prepare('UPDATE pm_clients SET keepalive = 1 - keepalive WHERE id = ?').run(id);
           on = Number(db.prepare('SELECT keepalive FROM pm_clients WHERE id = ?').get(id)?.keepalive) === 1;
-
+          
           db.prepare('INSERT INTO pm_keepalive_results (client_id, t, code) VALUES (?, 0, 0) ON CONFLICT(client_id) DO UPDATE SET t = 0, code = 0').run(id);
         }
         return json({ ok: true, on });
@@ -232,7 +242,7 @@ app.post('/', async (req, res) => {
         if (id !== '') {
           db.prepare('UPDATE pm_clients SET renew = 1 - renew WHERE id = ?').run(id);
           on = Number(db.prepare('SELECT renew FROM pm_clients WHERE id = ?').get(id)?.renew) === 1;
-
+          
           db.prepare('INSERT INTO pm_keepalive_results (client_id, t, code, renew_t, renew_code) VALUES (?, 0, 0, 0, 0) ON CONFLICT(client_id) DO UPDATE SET renew_t = 0, renew_code = 0').run(id);
         }
         return json({ ok: true, on });
@@ -289,10 +299,11 @@ function buildAppData(req, error, success) {
   return {
     csrf: req.session.csrf, user: req.session.user, weakPassword, error: error || '', success: success || '',
     clients, groups, notify, kaInterval, kaGV, kaGU,
+    isGuest: req.session.user === 'guest',
   };
 }
 
-getDB();
+getDB(); 
 app.listen(PORT, () => {
   console.log('Panel Manager (SQLite) 已启动: http://127.0.0.1:' + PORT);
   console.log('默认管理员：admin / admin（登录后请立即修改）。数据库文件：data/panel.db');

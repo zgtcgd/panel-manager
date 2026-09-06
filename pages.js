@@ -1,19 +1,193 @@
 'use strict';
 const { e, attrJson, kaIvText, COUNTRIES } = require('./core');
 
-const CSS = `:root{--bg:#f4f7fb;--card:#fff;--ink:#17243a;--muted:#748198;--primary:#3563e9;--line:#e7ebf2;--green:#12a66a;--red:#e05252}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#edf2ff,#f7faff)}.login-box{width:min(420px,92vw);background:#fff;border-radius:22px;padding:42px;box-shadow:0 18px 60px #27427c18}.brand{font-size:26px;font-weight:800;letter-spacing:-.5px}.brand span{color:var(--primary)}.sub{color:var(--muted);margin:9px 0 30px}.input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;margin:7px 0 16px;font-size:14px;outline:none}.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px #3563e915}label{font-size:13px;font-weight:650}.select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;margin:7px 0 16px;font-size:14px;background:#fff;color:var(--ink)}.btn{border:0;border-radius:10px;padding:12px 18px;background:var(--primary);color:#fff;font-weight:650;cursor:pointer}.btn:hover{filter:brightness(.95)}.btn.full{width:100%;margin-top:7px}.btn.ghost{background:#eef2ff;color:var(--primary)}.btn.danger{background:#fff0f0;color:var(--red);padding:8px 12px;font-size:12px}.btn.small{padding:8px 12px;background:#eef2ff;color:var(--primary);font-size:12px}.group-actions .btn{padding:8px 14px;font-size:13px;line-height:1.4}#delete-group-modal .btn{padding:12px 18px;font-size:14px;line-height:1.4}.alert{padding:11px 14px;border-radius:10px;background:#fff0f0;color:#bd4141;margin-bottom:16px;font-size:13px}.success{background:#eafaf3;color:#168258}.app{min-height:100vh}.topbar{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,72px)}.top-actions{display:flex;gap:12px;align-items:center}.icon-btn{width:40px;height:40px;border:0;background:#f1f4fa;border-radius:12px;color:#52627d;cursor:pointer;display:grid;place-items:center}.icon-btn svg{width:21px;height:21px}.user{font-size:13px;color:var(--muted)}main{max-width:1250px;margin:0 auto;padding:42px clamp(20px,5vw,72px)}.heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:30px}.heading h1{margin:0 0 8px;font-size:30px}.heading p{margin:0;color:var(--muted);font-size:14px}.stats{display:flex;gap:24px;color:var(--muted);font-size:13px}.stats b{color:var(--ink);font-size:20px;margin-right:5px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}.client{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 5px 20px #24406c08;position:relative}.client-head{display:flex;align-items:center;gap:14px}.flag{font-size:36px;background:#f6f8fc;border-radius:13px;width:58px;height:58px;display:grid;place-items:center}.flag-img{display:block;width:40px;height:auto;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}.client h3{margin:0 0 5px;font-size:17px}.country{font-size:12px;color:var(--muted);margin-bottom:4px}.status{font-size:12px;display:flex;align-items:center;gap:6px}.metrics{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.added{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dot{width:8px;height:8px;border-radius:50%;background:var(--red)}.online{color:var(--green)}.online .dot{background:var(--green)}.url{display:block;color:var(--primary);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:20px 0}.client-foot{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px}.card-actions{display:flex;gap:7px;flex:0 0 auto;margin-left:8px}.ka{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;user-select:none}.ka input{display:none}.ka i{width:26px;height:15px;border-radius:15px;background:#cdd6e4;position:relative;transition:background .15s;flex:0 0 auto}.ka i::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .15s}.ka input:checked+i{background:var(--green)}.ka input:checked+i::after{left:13px}.ka-last{font-size:10px;color:var(--muted);white-space:nowrap}.drag-handle{position:absolute;top:8px;right:8px;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;cursor:grab;color:var(--muted);font-size:15px;line-height:1;user-select:none};touch-action:none;-webkit-touch-callout:none.drag-handle:active{cursor:grabbing;background:#eef2ff;color:var(--primary)}.client.dragging{opacity:.35;outline:2px dashed var(--primary)}.drop-zone{min-height:70px;border:2px dashed transparent;border-radius:16px;transition:background .15s,border-color .15s}.drop-zone.dragover{background:#eef2ff;border-color:var(--primary)}.group.dragover{background:#eef2ff;border-color:var(--primary)}.drop-zone.gap{background:#eef2ff80;border-color:var(--primary);margin:6px 0}.group{padding:18px;border:1px solid var(--line);border-radius:18px;background:#fafbff;margin-bottom:26px}.group.collapsed{padding:6px 14px;margin-bottom:22px;background:#fff;border-style:dashed}.group.collapsed .group-head{margin-bottom:0;min-height:0;display:flex;flex-wrap:nowrap;align-items:center;gap:8px}.group.collapsed .group-actions{width:auto;flex:0 0 auto}.group.collapsed .group-actions .btn{padding:4px 12px;font-size:12px}.group.collapsed .grid.drop-zone{display:none}.group.collapsed .empty{display:none}.group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}.group-title{display:flex;align-items:center;gap:9px;font-weight:750;font-size:16px;color:var(--ink)}.group-title .gcount{font-size:12px;font-weight:650;color:var(--primary);background:#eef2ff;border-radius:20px;padding:2px 9px}.group-actions{display:flex;gap:6px}.group .grid{margin-top:0}.empty{grid-column:1/-1;background:#fff;border:1px dashed #cfd7e6;border-radius:16px;padding:60px;text-align:center;color:var(--muted)}.modal-bg{display:none;position:fixed;inset:0;background:#15233b66;place-items:center;padding:20px}.modal-bg.open{display:grid}.modal{width:min(480px,100%);max-height:calc(100vh - 40px);overflow-y:auto;background:#fff;border-radius:18px;padding:28px}.modal-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.modal-title h2{margin:0;font-size:20px}.close{border:0;background:none;font-size:25px;color:var(--muted);cursor:pointer}.add-form{display:grid;grid-template-columns:1.2fr .8fr 2fr auto;gap:10px;align-items:end;margin-bottom:28px}.add-form .input,.add-form .select{margin:7px 0 0}.add-form .btn{height:43px;white-space:nowrap}.edit-form{display:grid;grid-template-columns:1.2fr .8fr 2fr auto;gap:10px;align-items:end}.edit-form .input,.edit-form .select{margin:7px 0 0}@media(max-width:700px){.add-form,.edit-form{grid-template-columns:1fr 1fr}.add-form .wide,.edit-form .wide{grid-column:1/-1}.heading{display:block}.stats{margin-top:18px}}
-@media(max-width:700px){body{font-size:14px}.login-box{padding:28px 20px;border-radius:18px}.brand{font-size:22px}.sub{margin:8px 0 22px}.topbar{height:60px;padding:0 14px}.top-actions{gap:8px}.user{display:none}.icon-btn{width:38px;height:38px}.main-stats{flex-wrap:wrap;gap:8px 16px}main{padding:24px 14px}.heading{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:22px}.heading h1{font-size:24px}.stats{flex-wrap:wrap;gap:10px 16px}.stats b{font-size:18px}.add-form{grid-template-columns:1fr;gap:0}.add-form .wide{grid-column:auto}.grid{grid-template-columns:1fr;gap:14px}.client{padding:18px}.flag{width:52px;height:52px;font-size:32px}.drag-handle{width:34px;height:34px;font-size:19px;top:6px;right:6px}.group{padding:14px;border-radius:16px;margin-bottom:20px}.group-head{flex-direction:column;align-items:flex-start;gap:10px}.group-actions{width:100%;display:flex;gap:8px}.group-actions .btn{flex:1;padding:11px 10px;font-size:14px;text-align:center}.group-title{font-size:15px}.empty{padding:32px 16px}.modal-bg{padding:12px;place-items:stretch center}.modal{max-height:92vh;overflow-y:auto;border-radius:16px;padding:20px 16px}#delete-group-modal .btn{padding:13px 14px;font-size:14px}#delete-group-modal .modal-title h2{font-size:18px}}`;
+const CSS = `
+:root {
+  --bg: #f4f7fb; --card: #fff; --ink: #17243a; --muted: #748198;
+  --primary: #3563e9; --line: #e7ebf2; --green: #12a66a; --red: #e05252;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif }
 
-const FAVICON = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233563e9'><path d='M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z'/></svg>";
+/* ---------- 登录页 ---------- */
+.login { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, #edf2ff, #f7faff) }
+.login-box { width: min(420px, 92vw); background: #fff; border-radius: 22px; padding: 42px; box-shadow: 0 18px 60px #27427c18 }
+.brand { font-size: 26px; font-weight: 800; letter-spacing: -.5px }
+.brand span { color: var(--primary) }
+.sub { color: var(--muted); margin: 9px 0 30px }
+.input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; margin: 7px 0 16px; font-size: 14px; outline: none }
+.input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #3563e915 }
+label { font-size: 13px; font-weight: 650 }
+.select { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; margin: 7px 0 16px; font-size: 14px; background: #fff; color: var(--ink) }
+.btn { border: 0; border-radius: 10px; padding: 12px 18px; background: var(--primary); color: #fff; font-weight: 650; cursor: pointer }
+.btn:hover { filter: brightness(.95) }
+.btn.full { width: 100%; margin-top: 7px }
+.btn.ghost { background: #eef2ff; color: var(--primary) }
+.btn.danger { background: #fff0f0; color: var(--red); padding: 8px 12px; font-size: 12px }
+.btn.small { padding: 8px 12px; background: #eef2ff; color: var(--primary); font-size: 12px }
+.group-actions .btn { padding: 8px 14px; font-size: 13px; line-height: 1.4 }
+#delete-group-modal .btn { padding: 12px 18px; font-size: 14px; line-height: 1.4 }
+.alert { padding: 11px 14px; border-radius: 10px; background: #fff0f0; color: #bd4141; margin-bottom: 16px; font-size: 13px }
+.success { background: #eafaf3; color: #168258 }
+/* 登录框下方的一行提示（访客入口） */
+.login-tip { text-align: center; font-size: 13px; color: var(--muted); margin-top: 18px }
+.login-tip a { color: var(--primary); text-decoration: none; font-weight: 650 }
+.login-tip a:hover { text-decoration: underline }
 
-function pageStart(title) {
+/* ---------- 主界面 ---------- */
+.app { min-height: 100vh }
+.topbar { height: 72px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 5vw, 72px) }
+.top-actions { display: flex; gap: 12px; align-items: center }
+.icon-btn { width: 40px; height: 40px; border: 0; background: #f1f4fa; border-radius: 12px; color: #52627d; cursor: pointer; display: grid; place-items: center }
+.icon-btn svg { width: 21px; height: 21px }
+.user { font-size: 13px; color: var(--muted) }
+main { max-width: 1250px; margin: 0 auto; padding: 42px clamp(20px, 5vw, 72px) }
+.heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px }
+.heading h1 { margin: 0 0 8px; font-size: 30px }
+.heading p { margin: 0; color: var(--muted); font-size: 14px }
+.stats { display: flex; gap: 24px; color: var(--muted); font-size: 13px }
+.stats b { color: var(--ink); font-size: 20px; margin-right: 5px }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px }
+
+/* ---------- 客户端卡片 ---------- */
+.client { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; box-shadow: 0 5px 20px #24406c08; position: relative }
+.client-head { display: flex; align-items: center; gap: 14px }
+.flag { font-size: 36px; background: #f6f8fc; border-radius: 13px; width: 58px; height: 58px; display: grid; place-items: center }
+.flag-img { display: block; width: 40px; height: auto; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .08) }
+.client h3 { margin: 0 0 5px; font-size: 17px }
+.country { font-size: 12px; color: var(--muted); margin-bottom: 4px }
+.status { font-size: 12px; display: flex; align-items: center; gap: 6px }
+.metrics { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.added { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red) }
+.online { color: var(--green) }
+.online .dot { background: var(--green) }
+.url { display: block; color: var(--primary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 20px 0 }
+.client-foot { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 11px }
+.card-actions { display: flex; gap: 7px; flex: 0 0 auto; margin-left: 8px }
+.ka { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none }
+.ka input { display: none }
+.ka i { width: 26px; height: 15px; border-radius: 15px; background: #cdd6e4; position: relative; transition: background .15s; flex: 0 0 auto }
+.ka i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: left .15s }
+.ka input:checked + i { background: var(--green) }
+.ka input:checked + i::after { left: 13px }
+.ka-last { font-size: 10px; color: var(--muted); white-space: nowrap }
+
+/* ---------- 拖拽排序 ---------- */
+.drag-handle { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; cursor: grab; color: var(--muted); font-size: 15px; line-height: 1; user-select: none; touch-action: none; -webkit-touch-callout: none }
+.drag-handle:active { cursor: grabbing; background: #eef2ff; color: var(--primary) }
+.client.dragging { opacity: .35; outline: 2px dashed var(--primary) }
+.drop-zone { min-height: 70px; border: 2px dashed transparent; border-radius: 16px; transition: background .15s, border-color .15s }
+.drop-zone.dragover { background: #eef2ff; border-color: var(--primary) }
+.group.dragover { background: #eef2ff; border-color: var(--primary) }
+.drop-zone.gap { background: #eef2ff80; border-color: var(--primary); margin: 6px 0 }
+
+/* ---------- 分组 ---------- */
+.group { padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fafbff; margin-bottom: 26px }
+.group.collapsed { padding: 6px 14px; margin-bottom: 22px; background: #fff; border-style: dashed }
+.group.collapsed .group-head { margin-bottom: 0; min-height: 0; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px }
+.group.collapsed .group-actions { width: auto; flex: 0 0 auto }
+.group.collapsed .group-actions .btn { padding: 4px 12px; font-size: 12px }
+.group.collapsed .grid.drop-zone { display: none }
+.group.collapsed .empty { display: none }
+.group-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px }
+.group-title { display: flex; align-items: center; gap: 9px; font-weight: 750; font-size: 16px; color: var(--ink) }
+.group-title .gcount { font-size: 12px; font-weight: 650; color: var(--primary); background: #eef2ff; border-radius: 20px; padding: 2px 9px }
+.group-actions { display: flex; gap: 6px }
+.group .grid { margin-top: 0 }
+.empty { grid-column: 1/-1; background: #fff; border: 1px dashed #cfd7e6; border-radius: 16px; padding: 60px; text-align: center; color: var(--muted) }
+
+/* ---------- 弹窗 ---------- */
+.modal-bg { display: none; position: fixed; inset: 0; background: #15233b66; place-items: center; padding: 20px }
+.modal-bg.open { display: grid }
+.modal { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; background: #fff; border-radius: 18px; padding: 28px }
+.modal-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px }
+.modal-title h2 { margin: 0; font-size: 20px }
+.close { border: 0; background: none; font-size: 25px; color: var(--muted); cursor: pointer }
+
+/* ---------- 添加 / 编辑表单 ---------- */
+.add-form { display: grid; grid-template-columns: 1.2fr .8fr 2fr auto; gap: 10px; align-items: end; margin-bottom: 28px }
+.add-form .input, .add-form .select { margin: 7px 0 0 }
+.add-form .btn { height: 43px; white-space: nowrap }
+.edit-form { display: grid; grid-template-columns: 1.2fr .8fr 2fr auto; gap: 10px; align-items: end }
+.edit-form .input, .edit-form .select { margin: 7px 0 0 }
+
+/* 移动端：添加/编辑表单改为两列 */
+@media (max-width: 700px) {
+  .add-form, .edit-form { grid-template-columns: 1fr 1fr }
+  .add-form .wide, .edit-form .wide { grid-column: 1/-1 }
+  .heading { display: block }
+  .stats { margin-top: 18px }
+}
+
+/* ---------- 访客（只读）隐藏规则 ---------- */
+body.guest .add-form,
+body.guest .icon-btn,
+body.guest .group-actions,
+body.guest .card-actions,
+body.guest .ka,
+body.guest .drag-handle,
+body.guest .modal-bg { display: none !important }
+
+@media (max-width: 700px) {
+  body { font-size: 14px }
+  .login-box { padding: 28px 20px; border-radius: 18px }
+  .brand { font-size: 22px }
+  .sub { margin: 8px 0 22px }
+  .topbar { height: 60px; padding: 0 14px }
+  .top-actions { gap: 8px }
+  .user { display: none }
+  .icon-btn { width: 38px; height: 38px }
+  .main-stats { flex-wrap: wrap; gap: 8px 16px }
+  main { padding: 24px 14px }
+  .heading { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 22px }
+  .heading h1 { font-size: 24px }
+  .stats { flex-wrap: wrap; gap: 10px 16px }
+  .stats b { font-size: 18px }
+  .add-form { grid-template-columns: 1fr; gap: 0 }
+  .add-form .wide { grid-column: auto }
+  .grid { grid-template-columns: 1fr; gap: 14px }
+  .client { padding: 18px }
+  .flag { width: 52px; height: 52px; font-size: 32px }
+  .drag-handle { width: 34px; height: 34px; font-size: 19px; top: 6px; right: 6px }
+  .group { padding: 14px; border-radius: 16px; margin-bottom: 20px }
+  .group-head { flex-direction: column; align-items: flex-start; gap: 10px }
+  .group-actions { width: 100%; display: flex; gap: 8px }
+  .group-actions .btn { flex: 1; padding: 11px 10px; font-size: 14px; text-align: center }
+  .group-title { font-size: 15px }
+  .empty { padding: 32px 16px }
+  .modal-bg { padding: 12px; place-items: stretch center }
+  .modal { max-height: 92vh; overflow-y: auto; border-radius: 16px; padding: 20px 16px }
+  #delete-group-modal .btn { padding: 13px 14px; font-size: 14px }
+  #delete-group-modal .modal-title h2 { font-size: 18px }
+}
+`;
+
+const FAVICON =
+  "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233563e9'>" +
+  "<path d='M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z'/>" +
+  "</svg>";
+
+function pageStart(title, bodyClass) {
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><link rel="icon" href="${FAVICON}">
-<style>${CSS}</style></head><body>`;
+<style>${CSS}</style></head><body${bodyClass ? ` class="${bodyClass}"` : ''}>`;
 }
 
 function loginPage(error) {
-  return pageStart('Panel Manager') + `<div class="login"><form class="login-box" method="post"><div class="brand">Panel <span>Manager</span></div><div class="sub">监测客户端状态</div>${error ? `<div class="alert">${e(error)}</div>` : ''}<input type="hidden" name="action" value="login"><label>用户名</label><input class="input" name="username" value="admin" autocomplete="username" required><label>密码</label><input class="input" type="password" name="password" autocomplete="current-password" required><button class="btn full">登录管理面板</button></form></div>
+  return pageStart('Panel Manager') + `<div class="login"><form class="login-box" method="post">
+<div class="brand">Panel <span>Manager</span></div>
+<div class="sub">监测客户端状态</div>
+${error ? `<div class="alert">${e(error)}</div>` : ''}
+<input type="hidden" name="action" value="login">
+<label>用户名</label>
+<input class="input" name="username" value="admin" autocomplete="username" required>
+<label>密码</label>
+<input class="input" type="password" name="password" autocomplete="current-password" required>
+<button class="btn full">登录管理面板</button>
+</form>
+<div class="login-tip"><a href="/guest">访客只读访问（无需密码）</a></div>
+</div>
 </body></html>`;
 }
 
@@ -34,62 +208,365 @@ function flagImg(c) {
   return e(emoji);
 }
 
-function cardHtml(c, csrf, kaInterval) {
+function cardHtml(c, csrf, kaInterval, isGuest) {
   const cIv = Number(c.ka_interval || 0), rIv = Number(c.rn_interval || 0);
-  return `<article class="client" data-id="${e(c.id)}"><span class="drag-handle" title="按住此手柄拖动排序">⠿</span><div class="client-head"><div class="flag">${flagImg(c)}</div><div><h3>${e(c.name || '未命名客户端')}</h3><div class="country">${e(c.country || '其他')}</div><div class="status" data-online=""><i class="dot"></i><span class="status-text">检测中</span></div><div class="metrics">…</div><div class="added">添加于 ${e(c.created_at || '')}</div></div></div><a class="url" href="${e(c.url)}" target="_blank" rel="noreferrer">${e(c.url)}</a><div class="client-foot"><label class="ka" title="开启后每隔 ${kaIvText(cIv > 0 ? cIv : kaInterval)}自动访问一次该网址"><input type="checkbox" class="ka-cb" data-id="${e(c.id)}"${Number(c.keepalive) === 1 ? ' checked' : ''} onchange="toggleKa(this)"><i></i>保活</label><span class="ka-last" data-id="${e(c.id)}" data-kind="ka"></span><label class="ka" title="开启后每隔 ${kaIvText(rIv > 0 ? rIv : kaInterval)}自动访问一次继期网址"><input type="checkbox" class="rn-cb" data-id="${e(c.id)}"${Number(c.renew) === 1 ? ' checked' : ''} onchange="toggleRn(this)"><i></i>继期</label><span class="ka-last" data-id="${e(c.id)}" data-kind="rn"></span><div class="card-actions"><button type="button" class="btn small" onclick="editClient(${attrJson(c)})">编辑</button><form method="post" onsubmit="return confirm('确定删除此客户端？')"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="delete_client"><input type="hidden" name="id" value="${e(c.id)}"><button class="btn danger">删除</button></form></div></div></article>`;
+  const kaToggles = isGuest ? '' : `<label class="ka" title="开启后每隔 ${kaIvText(cIv > 0 ? cIv : kaInterval)}自动访问一次该网址"><input type="checkbox" class="ka-cb" data-id="${e(c.id)}"${Number(c.keepalive) === 1 ? ' checked' : ''} onchange="toggleKa(this)"><i></i>保活</label><span class="ka-last" data-id="${e(c.id)}" data-kind="ka"></span><label class="ka" title="开启后每隔 ${kaIvText(rIv > 0 ? rIv : kaInterval)}自动访问一次继期网址"><input type="checkbox" class="rn-cb" data-id="${e(c.id)}"${Number(c.renew) === 1 ? ' checked' : ''} onchange="toggleRn(this)"><i></i>继期</label><span class="ka-last" data-id="${e(c.id)}" data-kind="rn"></span>`;
+  const cardActions = isGuest ? '' : `<div class="card-actions"><button type="button" class="btn small" onclick="editClient(${attrJson(c)})">编辑</button><form method="post" onsubmit="return confirm('确定删除此客户端？')"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="delete_client"><input type="hidden" name="id" value="${e(c.id)}"><button class="btn danger">删除</button></form></div>`;
+  const urlLink = isGuest ? '' : `<a class="url" href="${e(c.url)}" target="_blank" rel="noreferrer">${e(c.url)}</a>`;
+  return `<article class="client" data-id="${e(c.id)}">${isGuest ? '' : '<span class="drag-handle" title="按住此手柄拖动排序">⠿</span>'}
+<div class="client-head"><div class="flag">${flagImg(c)}</div><div>
+<h3>${e(c.name || '未命名客户端')}</h3>
+<div class="country">${e(c.country || '其他')}</div>
+<div class="status" data-online=""><i class="dot"></i><span class="status-text">检测中</span></div>
+<div class="metrics">…</div>
+<div class="added">添加于 ${e(c.created_at || '')}</div>
+</div></div>
+${urlLink}
+<div class="client-foot">${kaToggles}${cardActions}</div>
+</article>`;
 }
 
 function appPage(d) {
-  const { csrf, user, weakPassword, error, success, clients, groups, notify, kaInterval, kaGV, kaGU } = d;
+  const { csrf, user, weakPassword, error, success, clients, groups, notify, kaInterval, kaGV, kaGU, isGuest } = d;
+  const guest = !!isGuest;
   const assignedIds = {};
   groups.forEach((g) => (g.client_ids || []).forEach((cid) => { assignedIds[cid] = true; }));
   const ungrouped = clients.filter((c) => !assignedIds[c.id]);
   const ungroupedCount = ungrouped.length;
   const countryOptions = COUNTRIES.map(([flag, country]) => `<option value="${e(country)}">${e(flag)} ${e(country)}</option>`).join('');
 
-  const cardsHtml = ungrouped.map((c) => cardHtml(c, csrf, kaInterval)).join('');
+  const cardsHtml = ungrouped.map((c) => cardHtml(c, csrf, kaInterval, guest)).join('');
   const groupsHtml = groups.map((g) => {
     const members = (g.client_ids || []).map((cid) => clients.find((c) => c.id === cid)).filter(Boolean);
-    const cards = members.map((c) => cardHtml(c, csrf, kaInterval)).join('');
-    return `<section class="group" data-group="${e(g.id)}"><div class="group-head"><div class="group-title">${e(g.name || '未命名分组')}<span class="gcount">${(g.client_ids || []).length}</span></div><div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', '${e(JSON.stringify(g.client_ids || []))}')">编辑</button><button type="button" class="btn danger" onclick="openDeleteGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', ${(g.client_ids || []).length})">删除</button></div></div><div class="grid drop-zone" data-zone="${e(g.id)}">${cards}${(g.client_ids || []).length === 0 ? '<div class="empty" style="grid-column:1/-1;padding:28px">拖拽客户端卡片到这里，加入此分组</div>' : ''}</div></section>`;
+    const cards = members.map((c) => cardHtml(c, csrf, kaInterval, guest)).join('');
+    const groupActions = guest ? '' : `<div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', '${e(JSON.stringify(g.client_ids || []))}')">编辑</button><button type="button" class="btn danger" onclick="openDeleteGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', ${(g.client_ids || []).length})">删除</button></div>`;
+    return `<section class="group" data-group="${e(g.id)}">
+<div class="group-head"><div class="group-title">${e(g.name || '未命名分组')}<span class="gcount">${(g.client_ids || []).length}</span></div>${groupActions}</div>
+<div class="grid drop-zone" data-zone="${e(g.id)}">${cards}${(g.client_ids || []).length === 0 ? '<div class="empty" style="grid-column:1/-1;padding:28px">拖拽客户端卡片到这里，加入此分组</div>' : ''}</div>
+</section>`;
   }).join('');
 
   const groupClientCbs = clients.map((c) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;cursor:pointer;font-weight:500"><input type="checkbox" name="client_ids[]" value="${e(c.id)}" class="group-client-cb"> <span>${e(c.name || '未命名客户端')}</span> <span style="color:var(--muted);margin-left:auto">${e(c.country || '')}</span></label>`).join('');
 
-  return pageStart('Panel Manager') + `<div class="app"><header class="topbar"><div class="brand">Panel <span>Manager</span></div><div class="top-actions"><span class="user">管理员：${e(user)}</span><button class="icon-btn" title="系统设置" onclick="openModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg></button><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="logout"><button class="btn ghost">退出</button></form></div></header><main>${weakPassword ? '<div class="alert" style="background:#fff8e6;color:#9a6b00">安全提示：管理员仍在使用默认密码 admin，请点击右上角齿轮图标立即修改。</div>' : ''}<div class="heading"><div><h1>客户端概览</h1><p>实时查看各个客户端是否在线</p></div><div class="stats"><span><b>${clients.length}</b>客户端</span><span><b id="online-count">…</b>在线</span></div></div>${error ? `<div class="alert">${e(error)}</div>` : ''}${success ? `<div class="alert success">${e(success)}</div>` : ''}<form class="add-form" method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="add_client"><div><label>客户端名称</label><input class="input" name="name" placeholder="客户端名称" required></div><div><label>国家 / 地区</label><input class="input country-search" name="country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required></div><div class="wide"><label>客户端网址</label><input class="input" name="url" type="url" placeholder="https://example.com" required></div><button class="btn">+ 添加客户端</button></form><section class="group${ungroupedCount === 0 ? ' collapsed' : ''}" id="ungrouped-sec"><div class="group-head"><div class="group-title">未分组<span class="gcount" id="group-count">${ungroupedCount}</span></div><div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal(null)">+ 新建分组</button></div></div><div class="grid drop-zone" data-zone="">${cardsHtml}</div></section>${groupsHtml}</main></div><datalist id="country-options">${countryOptions}</datalist><div class="modal-bg" id="edit"><div class="modal"><div class="modal-title"><h2>编辑客户端</h2><button class="close" type="button" onclick="closeEdit()">×</button></div><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="edit_client"><input type="hidden" name="id" id="edit-id"><label>客户端名称</label><input class="input" name="name" id="edit-name" required><label>国家 / 地区</label><input class="input country-search" name="country" id="edit-country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required><label>客户端网址</label><input class="input" name="url" id="edit-url" type="url" required><label>继期网址（卡片开启「继期」开关后，按继期间隔自动访问一次；可留空）</label><input class="input" name="renew_url" id="edit-renew-url" type="url" placeholder="https://example.com/renew"><div style="display:flex;align-items:center;gap:10px;margin:6px 0 2px"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0"><input type="checkbox" name="ka_ptero" id="edit-ka-ptero" onchange="kaPteroChange()">翼龙面板保活</label></div><div id="ka-ptero-rows" style="display:none"><div style="display:flex;gap:10px;margin:2px 0 8px"><button type="button" class="btn small" onclick="kaManual(this,'start')">手动开启</button><button type="button" class="btn small" style="background:#fff0f0;color:var(--red)" onclick="kaManual(this,'stop')">手动停止</button></div><label>翼龙面板 API 地址</label><input class="input" name="ka_ptero_url" id="edit-ka-ptero-url" placeholder="例如 https://panel.example.com"><label>API Key（客户端 API 密钥）</label><input class="input" name="ka_ptero_key" id="edit-ka-ptero-key" placeholder="ptlc_ 开头的 Client API Key"><label>服务器 ID（实例标识符）</label><input class="input" name="ka_ptero_sid" id="edit-ka-ptero-sid" placeholder="在翼龙面板服务器列表页可见，例如 9f4a2b1c"></div><label>保活间隔（留空使用全局设置）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="ka_interval" id="edit-ka" min="1" placeholder="默认全局" style="flex:1"><select class="select" name="ka_interval_unit" id="edit-ka-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><label>继期间隔（留空使用全局设置，仅对继期开关生效）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="rn_interval" id="edit-rn" min="1" placeholder="默认全局" style="flex:1"><select class="select" name="rn_interval_unit" id="edit-rn-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><button class="btn full">保存修改</button></form></div></div><div class="modal-bg" id="settings"><div class="modal"><div class="modal-title"><h2>系统设置</h2><button class="close" onclick="closeModal()">×</button></div><p style="color:var(--muted);font-size:13px">修改管理员 admin 的登录密码</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="change_password"><label>当前密码</label><input class="input" type="password" name="old_password" required><label>新密码</label><input class="input" type="password" name="new_password" minlength="6" required><label>确认新密码</label><input class="input" type="password" name="confirm_password" minlength="6" required><button class="btn full">保存新密码</button></form><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">掉线 / 恢复通知（Telegram）：客户端状态变化时推送，需保持至少一个已登录页面在后台轮询</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="notify-action" value="save_notify"><label>通知开关</label><select class="select" name="notify_type" id="notify-type" onchange="notifyTypeChange()"><option value="none"${notify.type === 'none' ? ' selected' : ''}>关闭</option><option value="telegram"${notify.type === 'telegram' ? ' selected' : ''}>开启（Telegram）</option><option value="custom"${notify.type === 'custom' ? ' selected' : ''}>自定义 GET 地址</option></select><div id="notify-row-telegram" style="display:none"><label>Bot Token</label><input class="input" name="tg_token" value="${e(notify.tg_token || '')}" placeholder="123456:ABC-DEF...（找 @BotFather 创建）"><label>Chat ID</label><input class="input" name="tg_chat" value="${e(notify.tg_chat || '')}" placeholder="接收通知的聊天 ID"></div><div id="notify-row-custom" style="display:none"><label>GET 地址模板（{title}、{body} 为占位符）</label><input class="input" name="custom_url" value="${e(notify.custom_url || '')}" placeholder="https://example.com/push?title={title}&body={body}"></div><div style="display:flex;gap:10px;margin-top:4px"><button type="submit" class="btn" style="flex:1" onclick="document.getElementById('notify-action').value='save_notify'">保存通知配置</button><button type="submit" class="btn ghost" style="flex:1" onclick="document.getElementById('notify-action').value='test_notify'">发送测试</button></div></form></div><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">保活定时访问：开启客户端卡片上的「保活」开关后，按设定间隔自动访问一次该客户端网址（需保持至少一个已登录页面在后台轮询）</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="save_keepalive"><label>全局访问间隔</label><div style="display:flex;gap:8px"><input class="input" type="number" name="interval" min="1" max="365" value="${kaGV}" required style="flex:1"><select class="select" name="interval_unit" style="flex:0 0 100px;margin:7px 0 16px"><option value="min"${kaGU === 'min' ? ' selected' : ''}>分钟</option><option value="hour"${kaGU === 'hour' ? ' selected' : ''}>小时</option><option value="day"${kaGU === 'day' ? ' selected' : ''}>天</option></select></div><button class="btn full">保存间隔</button></form></div></div></div><div class="modal-bg" id="group-modal"><div class="modal"><div class="modal-title"><h2 id="group-modal-title">新建分组</h2><button class="close" type="button" onclick="closeGroupModal()">×</button></div><form method="post" id="group-form"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="group-action" value="create_group"><input type="hidden" name="id" id="group-id"><label>分组名称</label><input class="input" name="name" id="group-name" placeholder="例如：亚洲节点" required><label style="display:block;margin:4px 0 6px">选择要加入的客户端（可多选，可留空）</label><div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:16px">${groupClientCbs}</div><button class="btn full">保存分组</button></form></div></div><div class="modal-bg" id="delete-group-modal"><div class="modal"><div class="modal-title"><h2>删除分组</h2><button class="close" type="button" onclick="closeDeleteGroupModal()">×</button></div><p style="color:var(--muted);font-size:13px;margin:0">分组「<b id="dgm-name" style="color:var(--ink)"></b>」包含 <b id="dgm-count" style="color:var(--ink)">0</b> 个客户端，请选择删除方式：</p><form method="post" id="delete-group-form" style="margin-top:18px"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="dgm-action" value="delete_group"><input type="hidden" name="id" id="dgm-id"><div style="display:flex;flex-direction:column;gap:10px"><button type="submit" class="btn" onclick="document.getElementById('dgm-action').value='delete_group'">删除分组，但不删除所属客户端</button><button type="submit" class="btn danger" onclick="document.getElementById('dgm-action').value='delete_group_with_clients'">删除分组及所属客户端</button></div></form></div></div><script>
+  const userLabel = guest ? '访客（只读）' : `管理员：${e(user)}`;
+  const weakAlert = guest || !weakPassword ? '' : '<div class="alert" style="background:#fff8e6;color:#9a6b00">安全提示：管理员仍在使用默认密码 admin，请点击右上角齿轮图标立即修改。</div>';
+  const gearBtn = guest ? '' : `<button class="icon-btn" title="系统设置" onclick="openModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg></button>`;
+  const addForm = guest ? '' : `<form class="add-form" method="post">
+<input type="hidden" name="csrf" value="${csrf}">
+<input type="hidden" name="action" value="add_client">
+<div><label>客户端名称</label><input class="input" name="name" placeholder="客户端名称" required></div>
+<div><label>国家 / 地区</label><input class="input country-search" name="country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required></div>
+<div class="wide"><label>客户端网址</label><input class="input" name="url" type="url" placeholder="https://example.com" required></div>
+<button class="btn">+ 添加客户端</button>
+</form>`;
+  const ungroupedActions = guest ? '' : '<div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal(null)">+ 新建分组</button></div>';
+
+  const modals = `
+<div class="modal-bg" id="edit"><div class="modal"><div class="modal-title"><h2>编辑客户端</h2><button class="close" type="button" onclick="closeEdit()">×</button></div><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="edit_client"><input type="hidden" name="id" id="edit-id"><label>客户端名称</label><input class="input" name="name" id="edit-name" required><label>国家 / 地区</label><input class="input country-search" name="country" id="edit-country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required><label>客户端网址</label><input class="input" name="url" id="edit-url" type="url" required><label>继期网址（卡片开启「继期」开关后，按继期间隔自动访问一次；可留空）</label><input class="input" name="renew_url" id="edit-renew-url" type="url" placeholder="https://example.com/renew"><div style="display:flex;align-items:center;gap:10px;margin:6px 0 2px"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0"><input type="checkbox" name="ka_ptero" id="edit-ka-ptero" onchange="kaPteroChange()">翼龙面板保活</label></div><div id="ka-ptero-rows" style="display:none"><div style="display:flex;gap:10px;margin:2px 0 8px"><button type="button" class="btn small" onclick="kaManual(this,'start')">手动开启</button><button type="button" class="btn small" style="background:#fff0f0;color:var(--red)" onclick="kaManual(this,'stop')">手动停止</button></div><label>翼龙面板 API 地址</label><input class="input" name="ka_ptero_url" id="edit-ka-ptero-url" placeholder="例如 https://panel.example.com"><label>API Key（客户端 API 密钥）</label><input class="input" name="ka_ptero_key" id="edit-ka-ptero-key" placeholder="ptlc_ 开头的 Client API Key"><label>服务器 ID（实例标识符）</label><input class="input" name="ka_ptero_sid" id="edit-ka-ptero-sid" placeholder="在翼龙面板服务器列表页可见，例如 9f4a2b1c"></div><label>保活间隔（留空使用全局设置）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="ka_interval" id="edit-ka" min="1" placeholder="默认全局" style="flex:1"><select class="select" name="ka_interval_unit" id="edit-ka-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><label>继期间隔（留空使用全局设置，仅对继期开关生效）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="rn_interval" id="edit-rn" min="1" placeholder="默认全局" style="flex:1"><select class="select" name="rn_interval_unit" id="edit-rn-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><button class="btn full">保存修改</button></form></div></div>
+<div class="modal-bg" id="settings"><div class="modal"><div class="modal-title"><h2>系统设置</h2><button class="close" onclick="closeModal()">×</button></div><p style="color:var(--muted);font-size:13px">修改管理员 admin 的登录密码</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="change_password"><label>当前密码</label><input class="input" type="password" name="old_password" required><label>新密码</label><input class="input" type="password" name="new_password" minlength="6" required><label>确认新密码</label><input class="input" type="password" name="confirm_password" minlength="6" required><button class="btn full">保存新密码</button></form><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">掉线 / 恢复通知（Telegram）：客户端状态变化时推送，需保持至少一个已登录页面在后台轮询</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="notify-action" value="save_notify"><label>通知开关</label><select class="select" name="notify_type" id="notify-type" onchange="notifyTypeChange()"><option value="none"${notify.type === 'none' ? ' selected' : ''}>关闭</option><option value="telegram"${notify.type === 'telegram' ? ' selected' : ''}>开启（Telegram）</option><option value="custom"${notify.type === 'custom' ? ' selected' : ''}>自定义 GET 地址</option></select><div id="notify-row-telegram" style="display:none"><label>Bot Token</label><input class="input" name="tg_token" value="${e(notify.tg_token || '')}" placeholder="123456:ABC-DEF...（找 @BotFather 创建）"><label>Chat ID</label><input class="input" name="tg_chat" value="${e(notify.tg_chat || '')}" placeholder="接收通知的聊天 ID"></div><div id="notify-row-custom" style="display:none"><label>GET 地址模板（{title}、{body} 为占位符）</label><input class="input" name="custom_url" value="${e(notify.custom_url || '')}" placeholder="https://example.com/push?title={title}&body={body}"></div><div style="display:flex;gap:10px;margin-top:4px"><button type="submit" class="btn" style="flex:1" onclick="document.getElementById('notify-action').value='save_notify'">保存通知配置</button><button type="submit" class="btn ghost" style="flex:1" onclick="document.getElementById('notify-action').value='test_notify'">发送测试</button></div></form></div><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">保活定时访问：开启客户端卡片上的「保活」开关后，按设定间隔自动访问一次该客户端网址（需保持至少一个已登录页面在后台轮询）</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="save_keepalive"><label>全局访问间隔</label><div style="display:flex;gap:8px"><input class="input" type="number" name="interval" min="1" max="365" value="${kaGV}" required style="flex:1"><select class="select" name="interval_unit" style="flex:0 0 100px;margin:7px 0 16px"><option value="min"${kaGU === 'min' ? ' selected' : ''}>分钟</option><option value="hour"${kaGU === 'hour' ? ' selected' : ''}>小时</option><option value="day"${kaGU === 'day' ? ' selected' : ''}>天</option></select></div><button class="btn full">保存间隔</button></form></div></div></div>
+<div class="modal-bg" id="group-modal"><div class="modal"><div class="modal-title"><h2 id="group-modal-title">新建分组</h2><button class="close" type="button" onclick="closeGroupModal()">×</button></div><form method="post" id="group-form"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="group-action" value="create_group"><input type="hidden" name="id" id="group-id"><label>分组名称</label><input class="input" name="name" id="group-name" placeholder="例如：亚洲节点" required><label style="display:block;margin:4px 0 6px">选择要加入的客户端（可多选，可留空）</label><div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:16px">${groupClientCbs}</div><button class="btn full">保存分组</button></form></div></div>
+<div class="modal-bg" id="delete-group-modal"><div class="modal"><div class="modal-title"><h2>删除分组</h2><button class="close" type="button" onclick="closeDeleteGroupModal()">×</button></div><p style="color:var(--muted);font-size:13px;margin:0">分组「<b id="dgm-name" style="color:var(--ink)"></b>」包含 <b id="dgm-count" style="color:var(--ink)">0</b> 个客户端，请选择删除方式：</p><form method="post" id="delete-group-form" style="margin-top:18px"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="dgm-action" value="delete_group"><input type="hidden" name="id" id="dgm-id"><div style="display:flex;flex-direction:column;gap:10px"><button type="submit" class="btn" onclick="document.getElementById('dgm-action').value='delete_group'">删除分组，但不删除所属客户端</button><button type="submit" class="btn danger" onclick="document.getElementById('dgm-action').value='delete_group_with_clients'">删除分组及所属客户端</button></div></form></div></div>`;
+
+  return pageStart('Panel Manager', guest ? 'guest' : '') + `<div class="app"><header class="topbar"><div class="brand">Panel <span>Manager</span></div><div class="top-actions"><span class="user">${userLabel}</span>${gearBtn}<form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="logout"><button class="btn ghost">退出</button></form></div></header><main>${weakAlert}<div class="heading"><div><h1>客户端概览</h1><p>实时查看各个客户端是否在线</p></div><div class="stats"><span><b>${clients.length}</b>客户端</span><span><b id="online-count">…</b>在线</span></div></div>${error ? `<div class="alert">${e(error)}</div>` : ''}${success ? `<div class="alert success">${e(success)}</div>` : ''}${addForm}<section class="group${ungroupedCount === 0 ? ' collapsed' : ''}" id="ungrouped-sec"><div class="group-head"><div class="group-title">未分组<span class="gcount" id="group-count">${ungroupedCount}</span></div>${ungroupedActions}</div><div class="grid drop-zone" data-zone="">${cardsHtml}</div></section>${groupsHtml}</main></div><datalist id="country-options">${countryOptions}</datalist>${modals}<script>
 ${CLIENT_JS}
 </script></body></html>`;
 }
 
 const CLIENT_JS = `
-function editClient(c){document.getElementById('edit-id').value=c.id;document.getElementById('edit-name').value=c.name||'';document.getElementById('edit-country').value=c.country||'其他';document.getElementById('edit-url').value=c.url||'';const iv=parseInt(c.ka_interval)||0;const kaDisp=iv>0&&iv%1440===0?{v:iv/1440,u:'day'}:(iv>0&&iv%60===0?{v:iv/60,u:'hour'}:{v:iv>0?iv:'',u:'min'});document.getElementById('edit-ka').value=kaDisp.v;document.getElementById('edit-ka-unit').value=kaDisp.u;const rnIvD=parseInt(c.rn_interval)||0;const rnDisp=rnIvD>0&&rnIvD%1440===0?{v:rnIvD/1440,u:'day'}:(rnIvD>0&&rnIvD%60===0?{v:rnIvD/60,u:'hour'}:{v:rnIvD>0?rnIvD:'',u:'min'});document.getElementById('edit-rn').value=rnDisp.v;document.getElementById('edit-rn-unit').value=rnDisp.u;document.getElementById('edit-renew-url').value=c.renew_url||'';document.getElementById('edit-ka-ptero').checked=!!c.ka_ptero;document.getElementById('edit-ka-ptero-url').value=c.ka_ptero_url||'';document.getElementById('edit-ka-ptero-key').value=c.ka_ptero_key||'';document.getElementById('edit-ka-ptero-sid').value=c.ka_ptero_sid||'';kaPteroChange();document.getElementById('edit').classList.add('open')}
-function kaPteroChange(){const r=document.getElementById('ka-ptero-rows');if(r)r.style.display=document.getElementById('edit-ka-ptero').checked?'block':'none'}
-function kaManual(btn,signal){const u=document.getElementById('edit-ka-ptero-url').value.trim(),k=document.getElementById('edit-ka-ptero-key').value.trim(),s=document.getElementById('edit-ka-ptero-sid').value.trim();if(!u||!k||!s){alert('请先填写翼龙 API 地址、API Key 和服务器 ID');return}const b=new URLSearchParams();b.append('csrf',document.querySelector('input[name="csrf"]').value);b.append('action','ka_manual');b.append('url',u);b.append('key',k);b.append('sid',s);b.append('signal',signal);btn.disabled=true;fetch('/',{method:'POST',credentials:'same-origin',body:b}).then(r=>r.json()).then(d=>{btn.disabled=false;if(d.ok){alert(d.signal==='stop'?'手动停止成功：已向翼龙面板发送停止指令':(d.powered?'手动开启成功：服务器此前离线，已发送开机指令':'手动开启成功：服务器正在运行'))}else{alert((d.signal==='stop'?'手动停止':'手动开启')+'失败：HTTP '+d.code)}}).catch(()=>{btn.disabled=false;alert('翼龙请求失败')})}
-function closeEdit(){document.getElementById('edit').classList.remove('open')}
-const modal=document.getElementById('settings');function openModal(){modal.classList.add('open')}function closeModal(){modal.classList.remove('open')}modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
-function openGroupModal(id,name,clientIds){const m=document.getElementById('group-modal');const title=document.getElementById('group-modal-title');const action=document.getElementById('group-action');const gid=document.getElementById('group-id');const gname=document.getElementById('group-name');gid.value=id||'';if(id){title.textContent='编辑分组';action.value='edit_group';gname.value=name||'';}else{title.textContent='新建分组';action.value='create_group';gname.value='';}const list=id&&clientIds?JSON.parse(clientIds||'[]'):[];document.querySelectorAll('.group-client-cb').forEach(cb=>{cb.checked=list.includes(cb.value)});m.classList.add('open');}
-function closeGroupModal(){document.getElementById('group-modal').classList.remove('open');}
-document.getElementById('group-modal').addEventListener('click',e=>{if(e.target===document.getElementById('group-modal'))closeGroupModal();});
-function openDeleteGroupModal(id,name,count){document.getElementById('dgm-id').value=id||'';document.getElementById('dgm-name').textContent=name||'';document.getElementById('dgm-count').textContent=count||0;document.getElementById('dgm-action').value='delete_group';document.getElementById('delete-group-modal').classList.add('open');}
-function closeDeleteGroupModal(){document.getElementById('delete-group-modal').classList.remove('open');}
-document.getElementById('delete-group-modal').addEventListener('click',e=>{if(e.target===document.getElementById('delete-group-modal'))closeDeleteGroupModal();});
-(function(){let dragged=null;
-function getAfter(zone,x,y){const els=[...zone.querySelectorAll('.client:not(.dragging)')];for(const el of els){const b=el.getBoundingClientRect();if(y>=b.top&&y<=b.bottom){if(x<b.left+b.width/2)return el;}else if(y<b.top)return el;}return null;}
-document.addEventListener('mousedown',e=>{const card=e.target.closest('.client');if(!card)return;if(e.target.closest('a,button,input,h3,.country,.status-text,.metrics,.ka,.client-foot span'))return;card.draggable=true;});
-document.addEventListener('dragstart',e=>{if(e.target.closest('a,button,input'))return;const card=e.target.closest('.client');if(!card)return;dragged=card;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',card.dataset.id);}catch(_){}});
-document.addEventListener('dragend',()=>{if(dragged){dragged.classList.remove('dragging');dragged.draggable=false;}dragged=null;document.querySelectorAll('.group.dragover').forEach(g=>g.classList.remove('dragover'));updateCounts();saveLayout();});
-document.querySelectorAll('.group').forEach(group=>{const zone=group.querySelector('.drop-zone');if(!zone)return;
-group.addEventListener('dragover',e=>{if(!dragged)return;e.preventDefault();e.dataTransfer.dropEffect='move';group.classList.add('dragover');if(zone&&zone.offsetParent!==null){const after=getAfter(zone,e.clientX,e.clientY);if(after==null)zone.appendChild(dragged);else zone.insertBefore(dragged,after);}});
-group.addEventListener('dragleave',e=>{if(group.contains(e.relatedTarget))return;group.classList.remove('dragover');});
-group.addEventListener('drop',e=>{e.preventDefault();group.classList.remove('dragover');if(dragged){if(zone&&zone!==dragged.parentElement){const after=getAfter(zone,e.clientX,e.clientY);if(after==null)zone.appendChild(dragged);else zone.insertBefore(dragged,after);}dragged.classList.remove('dragging');updateCounts();saveLayout();}});});
-let touchDrag=null;document.addEventListener('touchstart',e=>{const h=e.target.closest('.drag-handle');if(!h)return;const card=h.closest('.client');if(!card)return;touchDrag={card:card};card.classList.add('dragging');e.preventDefault();},{passive:false});document.addEventListener('touchmove',e=>{if(!touchDrag)return;e.preventDefault();const t=e.touches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const group=el?el.closest('.group'):null;if(group){const zone=group.querySelector('.drop-zone');if(zone&&zone.offsetParent!==null){const after=getAfter(zone,t.clientX,t.clientY);if(after==null)zone.appendChild(touchDrag.card);else zone.insertBefore(touchDrag.card,after);}}},{passive:false});document.addEventListener('touchend',e=>{if(!touchDrag)return;const card=touchDrag.card;const t=e.changedTouches[0];const el=t?document.elementFromPoint(t.clientX,t.clientY):null;const group=el?el.closest('.group'):null;if(group){const zone=group.querySelector('.drop-zone');if(zone&&zone!==card.parentElement){const after=getAfter(zone,t.clientX,t.clientY);if(after==null)zone.appendChild(card);else zone.insertBefore(card,after);}}card.classList.remove('dragging');touchDrag=null;updateCounts();saveLayout();},{passive:false});})();
-function updateCounts(){const counts={};document.querySelectorAll('.grid.drop-zone').forEach(zone=>{counts[zone.dataset.zone||'']=zone.querySelectorAll('.client').length;const zoneEl=zone.closest('.group');if(zoneEl){const badge=zoneEl.querySelector('.gcount');if(badge)badge.textContent=counts[zone.dataset.zone||''];}});const unassigned=document.getElementById('group-count');if(unassigned)unassigned.textContent=counts['']||0;const us=document.getElementById('ungrouped-sec');if(us){if((counts['']||0)>0)us.classList.remove('collapsed');else us.classList.add('collapsed');}}
-function saveLayout(){const order=[];document.querySelectorAll('.client').forEach(card=>{order.push(card.dataset.id);});const membership={};document.querySelectorAll('.grid.drop-zone').forEach(zone=>{const zid=zone.dataset.zone||'';membership[zid]=[];zone.querySelectorAll('.client').forEach(card=>{membership[zid].push(card.dataset.id);});});const body=new URLSearchParams();body.append('csrf',document.querySelector('input[name="csrf"]').value);body.append('action','save_layout');body.append('layout',JSON.stringify({order:order,membership:membership}));fetch('/',{method:'POST',credentials:'same-origin',body:body}).catch(()=>{});}
-function metricText(d){if(!d||d.up24===null||d.up24===undefined)return'暂无数据';const p=['24h '+d.up24+'%'];if(d.avg!==null&&d.avg!==undefined)p.push(d.avg+'ms');p.push('掉线 '+d.downs+'次');return p.join(' · ')}
-function refreshStatus(){fetch('/status',{credentials:'same-origin',cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('bad');return r.json()}).then(data=>{let onlineCount=0;document.querySelectorAll('.client').forEach(card=>{const id=card.dataset.id;const st=card.querySelector('.status');const d=data[id];if(id&&st&&d){const on=d.s===1;if(on)onlineCount++;st.classList.toggle('online',on);st.querySelector('.status-text').textContent=on?'在线':'不在线'}const m=card.querySelector('.metrics');if(m&&d)m.textContent=metricText(d)});const oc=document.getElementById('online-count');if(oc)oc.textContent=onlineCount;const shTime=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false});const ka=data._ka||{};const sets={ka:ka.results||{},rn:ka.renewals||{}};document.querySelectorAll('.ka-last').forEach(el=>{const card=el.closest('.client');const cb=card&&card.querySelector(el.dataset.kind==='rn'?'.rn-cb':'.ka-cb');if(!cb||!cb.checked){el.textContent='';return}const r=(sets[el.dataset.kind||'ka']||{})[el.dataset.id];if(!r||!r.t){el.textContent='';return}const ok=r.code>=200&&r.code<500;el.textContent=(ok?'✅':'❌')+' '+shTime.format(new Date(r.t*1000))})}).catch(()=>{})}
-function toggleKa(cb){const body=new URLSearchParams();body.append('csrf',document.querySelector('input[name="csrf"]').value);body.append('action','toggle_keepalive');body.append('id',cb.dataset.id);fetch('/',{method:'POST',credentials:'same-origin',body:body}).then(r=>r.json()).then(d=>{if(d.ok)refreshStatus()}).catch(()=>{cb.checked=!cb.checked})}
-function toggleRn(cb){const body=new URLSearchParams();body.append('csrf',document.querySelector('input[name="csrf"]').value);body.append('action','toggle_renew');body.append('id',cb.dataset.id);fetch('/',{method:'POST',credentials:'same-origin',body:body}).then(r=>r.json()).then(d=>{if(d.ok)refreshStatus()}).catch(()=>{cb.checked=!cb.checked})}
-function notifyTypeChange(){const t=document.getElementById('notify-type').value;['telegram','custom'].forEach(k=>{const r=document.getElementById('notify-row-'+k);if(r)r.style.display=t===k?'block':'none';});}
-notifyTypeChange();refreshStatus();setInterval(refreshStatus,30000);`;
+function editClient(c) {
+  document.getElementById('edit-id').value = c.id;
+  document.getElementById('edit-name').value = c.name || '';
+  document.getElementById('edit-country').value = c.country || '其他';
+  document.getElementById('edit-url').value = c.url || '';
+  const iv = parseInt(c.ka_interval) || 0;
+  const kaDisp = iv > 0 && iv % 1440 === 0 ? { v: iv / 1440, u: 'day' } : (iv > 0 && iv % 60 === 0 ? { v: iv / 60, u: 'hour' } : { v: iv > 0 ? iv : '', u: 'min' });
+  document.getElementById('edit-ka').value = kaDisp.v;
+  document.getElementById('edit-ka-unit').value = kaDisp.u;
+  const rnIvD = parseInt(c.rn_interval) || 0;
+  const rnDisp = rnIvD > 0 && rnIvD % 1440 === 0 ? { v: rnIvD / 1440, u: 'day' } : (rnIvD > 0 && rnIvD % 60 === 0 ? { v: rnIvD / 60, u: 'hour' } : { v: rnIvD > 0 ? rnIvD : '', u: 'min' });
+  document.getElementById('edit-rn').value = rnDisp.v;
+  document.getElementById('edit-rn-unit').value = rnDisp.u;
+  document.getElementById('edit-renew-url').value = c.renew_url || '';
+  document.getElementById('edit-ka-ptero').checked = !!c.ka_ptero;
+  document.getElementById('edit-ka-ptero-url').value = c.ka_ptero_url || '';
+  document.getElementById('edit-ka-ptero-key').value = c.ka_ptero_key || '';
+  document.getElementById('edit-ka-ptero-sid').value = c.ka_ptero_sid || '';
+  kaPteroChange();
+  document.getElementById('edit').classList.add('open');
+}
+function kaPteroChange() {
+  const r = document.getElementById('ka-ptero-rows');
+  if (r) r.style.display = document.getElementById('edit-ka-ptero').checked ? 'block' : 'none';
+}
+function kaManual(btn, signal) {
+  const u = document.getElementById('edit-ka-ptero-url').value.trim();
+  const k = document.getElementById('edit-ka-ptero-key').value.trim();
+  const s = document.getElementById('edit-ka-ptero-sid').value.trim();
+  if (!u || !k || !s) { alert('请先填写翼龙 API 地址、API Key 和服务器 ID'); return; }
+  const b = new URLSearchParams();
+  b.append('csrf', document.querySelector('input[name="csrf"]').value);
+  b.append('action', 'ka_manual');
+  b.append('url', u);
+  b.append('key', k);
+  b.append('sid', s);
+  b.append('signal', signal);
+  btn.disabled = true;
+  fetch('/', { method: 'POST', credentials: 'same-origin', body: b }).then(r => r.json()).then(d => {
+    btn.disabled = false;
+    if (d.ok) {
+      alert(d.signal === 'stop' ? '手动停止成功：已向翼龙面板发送停止指令' : (d.powered ? '手动开启成功：服务器此前离线，已发送开机指令' : '手动开启成功：服务器正在运行'));
+    } else {
+      alert((d.signal === 'stop' ? '手动停止' : '手动开启') + '失败：HTTP ' + d.code);
+    }
+  }).catch(() => { btn.disabled = false; alert('翼龙请求失败'); });
+}
+function closeEdit() { document.getElementById('edit').classList.remove('open'); }
+const modal = document.getElementById('settings');
+function openModal() { modal.classList.add('open'); }
+function closeModal() { modal.classList.remove('open'); }
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+function openGroupModal(id, name, clientIds) {
+  const m = document.getElementById('group-modal');
+  const title = document.getElementById('group-modal-title');
+  const action = document.getElementById('group-action');
+  const gid = document.getElementById('group-id');
+  const gname = document.getElementById('group-name');
+  gid.value = id || '';
+  if (id) {
+    title.textContent = '编辑分组';
+    action.value = 'edit_group';
+    gname.value = name || '';
+  } else {
+    title.textContent = '新建分组';
+    action.value = 'create_group';
+    gname.value = '';
+  }
+  const list = id && clientIds ? JSON.parse(clientIds || '[]') : [];
+  document.querySelectorAll('.group-client-cb').forEach(cb => { cb.checked = list.includes(cb.value); });
+  m.classList.add('open');
+}
+function closeGroupModal() { document.getElementById('group-modal').classList.remove('open'); }
+document.getElementById('group-modal').addEventListener('click', e => { if (e.target === document.getElementById('group-modal')) closeGroupModal(); });
+function openDeleteGroupModal(id, name, count) {
+  document.getElementById('dgm-id').value = id || '';
+  document.getElementById('dgm-name').textContent = name || '';
+  document.getElementById('dgm-count').textContent = count || 0;
+  document.getElementById('dgm-action').value = 'delete_group';
+  document.getElementById('delete-group-modal').classList.add('open');
+}
+function closeDeleteGroupModal() { document.getElementById('delete-group-modal').classList.remove('open'); }
+document.getElementById('delete-group-modal').addEventListener('click', e => { if (e.target === document.getElementById('delete-group-modal')) closeDeleteGroupModal(); });
+(function () {
+  let dragged = null;
+  function getAfter(zone, x, y) {
+    const els = [...zone.querySelectorAll('.client:not(.dragging)')];
+    for (const el of els) {
+      const b = el.getBoundingClientRect();
+      if (y >= b.top && y <= b.bottom) {
+        if (x < b.left + b.width / 2) return el;
+      } else if (y < b.top) return el;
+    }
+    return null;
+  }
+  document.addEventListener('mousedown', e => {
+    const card = e.target.closest('.client');
+    if (!card) return;
+    if (e.target.closest('a,button,input,h3,.country,.status-text,.metrics,.ka,.client-foot span')) return;
+    card.draggable = true;
+  });
+  document.addEventListener('dragstart', e => {
+    if (e.target.closest('a,button,input')) return;
+    const card = e.target.closest('.client');
+    if (!card) return;
+    dragged = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch (_) { }
+  });
+  document.addEventListener('dragend', () => {
+    if (dragged) { dragged.classList.remove('dragging'); dragged.draggable = false; }
+    dragged = null;
+    document.querySelectorAll('.group.dragover').forEach(g => g.classList.remove('dragover'));
+    updateCounts();
+    saveLayout();
+  });
+  document.querySelectorAll('.group').forEach(group => {
+    const zone = group.querySelector('.drop-zone');
+    if (!zone) return;
+    group.addEventListener('dragover', e => {
+      if (!dragged) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      group.classList.add('dragover');
+      if (zone && zone.offsetParent !== null) {
+        const after = getAfter(zone, e.clientX, e.clientY);
+        if (after == null) zone.appendChild(dragged); else zone.insertBefore(dragged, after);
+      }
+    });
+    group.addEventListener('dragleave', e => {
+      if (group.contains(e.relatedTarget)) return;
+      group.classList.remove('dragover');
+    });
+    group.addEventListener('drop', e => {
+      e.preventDefault();
+      group.classList.remove('dragover');
+      if (dragged) {
+        if (zone && zone !== dragged.parentElement) {
+          const after = getAfter(zone, e.clientX, e.clientY);
+          if (after == null) zone.appendChild(dragged); else zone.insertBefore(dragged, after);
+        }
+        dragged.classList.remove('dragging');
+        updateCounts();
+        saveLayout();
+      }
+    });
+  });
+  let touchDrag = null;
+  document.addEventListener('touchstart', e => {
+    const h = e.target.closest('.drag-handle');
+    if (!h) return;
+    const card = h.closest('.client');
+    if (!card) return;
+    touchDrag = { card: card };
+    card.classList.add('dragging');
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!touchDrag) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const group = el ? el.closest('.group') : null;
+    if (group) {
+      const zone = group.querySelector('.drop-zone');
+      if (zone && zone.offsetParent !== null) {
+        const after = getAfter(zone, t.clientX, t.clientY);
+        if (after == null) zone.appendChild(touchDrag.card); else zone.insertBefore(touchDrag.card, after);
+      }
+    }
+  }, { passive: false });
+  document.addEventListener('touchend', e => {
+    if (!touchDrag) return;
+    const card = touchDrag.card;
+    const t = e.changedTouches[0];
+    const el = t ? document.elementFromPoint(t.clientX, t.clientY) : null;
+    const group = el ? el.closest('.group') : null;
+    if (group) {
+      const zone = group.querySelector('.drop-zone');
+      if (zone && zone !== card.parentElement) {
+        const after = getAfter(zone, t.clientX, t.clientY);
+        if (after == null) zone.appendChild(card); else zone.insertBefore(card, after);
+      }
+    }
+    card.classList.remove('dragging');
+    touchDrag = null;
+    updateCounts();
+    saveLayout();
+  }, { passive: false });
+})();
+function updateCounts() {
+  const counts = {};
+  document.querySelectorAll('.grid.drop-zone').forEach(zone => {
+    counts[zone.dataset.zone || ''] = zone.querySelectorAll('.client').length;
+    const zoneEl = zone.closest('.group');
+    if (zoneEl) {
+      const badge = zoneEl.querySelector('.gcount');
+      if (badge) badge.textContent = counts[zone.dataset.zone || ''];
+    }
+  });
+  const unassigned = document.getElementById('group-count');
+  if (unassigned) unassigned.textContent = counts[''] || 0;
+  const us = document.getElementById('ungrouped-sec');
+  if (us) {
+    if ((counts[''] || 0) > 0) us.classList.remove('collapsed');
+    else us.classList.add('collapsed');
+  }
+}
+function saveLayout() {
+  const order = [];
+  document.querySelectorAll('.client').forEach(card => { order.push(card.dataset.id); });
+  const membership = {};
+  document.querySelectorAll('.grid.drop-zone').forEach(zone => {
+    const zid = zone.dataset.zone || '';
+    membership[zid] = [];
+    zone.querySelectorAll('.client').forEach(card => { membership[zid].push(card.dataset.id); });
+  });
+  const body = new URLSearchParams();
+  body.append('csrf', document.querySelector('input[name="csrf"]').value);
+  body.append('action', 'save_layout');
+  body.append('layout', JSON.stringify({ order: order, membership: membership }));
+  fetch('/', { method: 'POST', credentials: 'same-origin', body: body }).catch(() => { });
+}
+function metricText(d) {
+  if (!d || d.up24 === null || d.up24 === undefined) return '暂无数据';
+  const p = ['24h ' + d.up24 + '%'];
+  if (d.avg !== null && d.avg !== undefined) p.push(d.avg + 'ms');
+  p.push('掉线 ' + d.downs + '次');
+  return p.join(' · ');
+}
+function refreshStatus() {
+  fetch('/status', { credentials: 'same-origin', cache: 'no-store' }).then(r => {
+    if (!r.ok) throw new Error('bad');
+    return r.json();
+  }).then(data => {
+    let onlineCount = 0;
+    document.querySelectorAll('.client').forEach(card => {
+      const id = card.dataset.id;
+      const st = card.querySelector('.status');
+      const d = data[id];
+      if (id && st && d) {
+        const on = d.s === 1;
+        if (on) onlineCount++;
+        st.classList.toggle('online', on);
+        st.querySelector('.status-text').textContent = on ? '在线' : '不在线';
+      }
+      const m = card.querySelector('.metrics');
+      if (m && d) m.textContent = metricText(d);
+    });
+    const oc = document.getElementById('online-count');
+    if (oc) oc.textContent = onlineCount;
+    const shTime = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false });
+    const ka = data._ka || {};
+    const sets = { ka: ka.results || {}, rn: ka.renewals || {} };
+    document.querySelectorAll('.ka-last').forEach(el => {
+      const card = el.closest('.client');
+      const cb = card && card.querySelector(el.dataset.kind === 'rn' ? '.rn-cb' : '.ka-cb');
+      if (!cb || !cb.checked) { el.textContent = ''; return; }
+      const r = (sets[el.dataset.kind || 'ka'] || {})[el.dataset.id];
+      if (!r || !r.t) { el.textContent = ''; return; }
+      const ok = r.code >= 200 && r.code < 500;
+      el.textContent = (ok ? '✅' : '❌') + ' ' + shTime.format(new Date(r.t * 1000));
+    });
+  }).catch(() => { });
+}
+function toggleKa(cb) {
+  const body = new URLSearchParams();
+  body.append('csrf', document.querySelector('input[name="csrf"]').value);
+  body.append('action', 'toggle_keepalive');
+  body.append('id', cb.dataset.id);
+  fetch('/', { method: 'POST', credentials: 'same-origin', body: body }).then(r => r.json()).then(d => {
+    if (d.ok) refreshStatus();
+  }).catch(() => { cb.checked = !cb.checked; });
+}
+function toggleRn(cb) {
+  const body = new URLSearchParams();
+  body.append('csrf', document.querySelector('input[name="csrf"]').value);
+  body.append('action', 'toggle_renew');
+  body.append('id', cb.dataset.id);
+  fetch('/', { method: 'POST', credentials: 'same-origin', body: body }).then(r => r.json()).then(d => {
+    if (d.ok) refreshStatus();
+  }).catch(() => { cb.checked = !cb.checked; });
+}
+function notifyTypeChange() {
+  const t = document.getElementById('notify-type').value;
+  ['telegram', 'custom'].forEach(k => {
+    const r = document.getElementById('notify-row-' + k);
+    if (r) r.style.display = t === k ? 'block' : 'none';
+  });
+}
+notifyTypeChange();
+refreshStatus();
+setInterval(refreshStatus, 30000);
+`;
 
 module.exports = { loginPage, appPage, CSS };
