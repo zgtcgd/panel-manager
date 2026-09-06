@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apk add --no-cache bash wget curl procps
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 COPY . .
 
