@@ -3,7 +3,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const {
-  e, shDateTime, kaIvText, getDB, statusLogic, pteroApi, pteroManualStart, sendNotification, PORT,
+  e, shDateTime, kaIvText, getDB, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT,
 } = require('./core');
 const { loginPage, appPage } = require('./pages');
 
@@ -45,6 +45,13 @@ function parseIntervalMinutes(val, unit) {
   const mult = unit === 'hour' ? 60 : (unit === 'day' ? 1440 : 1);
   return Math.min(43200, Math.max(1, parseInt(v, 10) || 1) * mult);
 }
+ 
+function parseMinutesAllowZero(val, unit) {
+  const v = String(val ?? '').trim();
+  if (v === '') return null;
+  const mult = unit === 'hour' ? 60 : (unit === 'day' ? 1440 : 1);
+  return Math.min(43200, Math.max(0, parseInt(v, 10) || 0) * mult);
+}
 
 app.get('/', async (req, res) => {
   if (!loggedIn(req)) return res.send(loginPage(''));
@@ -66,7 +73,7 @@ app.get('/guest', (req, res) => {
 app.get('/status', async (req, res) => {
   if (!loggedIn(req)) return res.status(401).json({ error: '未登录' });
   try {
-    res.set('Cache-Control', 'no-store').json(await statusLogic());
+    res.set('Cache-Control', 'no-store').json(await runStatusLogic());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -128,13 +135,16 @@ app.post('/', async (req, res) => {
       case 'edit_client': {
         const url = String(b.url || '').trim();
         if (!/^https?:\/\/.+\..+/i.test(url)) return render({ error: '请输入有效的客户端网址（需包含 http:// 或 https://）' });
-        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ? WHERE id = ?')
+        const detectSec = /^\d+$/.test(String(b.detect_interval || '').trim()) ? Math.max(5, Math.min(86400, parseInt(b.detect_interval, 10))) : null;
+        const rnMode = b.renew_mode === '2' ? 2 : 1;
+        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ?, detect_interval = ?, renew_mode = ? WHERE id = ?')
           .run(
             String(b.name || '').trim() || '未命名客户端', String(b.country || '').trim() || '其他', url,
-            parseIntervalMinutes(b.ka_interval, b.ka_interval_unit),
+            parseMinutesAllowZero(b.ka_interval, b.ka_interval_unit),
             b.ka_ptero ? 1 : 0, String(b.ka_ptero_url || '').trim(), String(b.ka_ptero_key || '').trim(), String(b.ka_ptero_sid || '').trim(),
             String(b.renew_url || '').trim(),
-            parseIntervalMinutes(b.rn_interval, b.rn_interval_unit),
+            parseMinutesAllowZero(b.rn_interval, b.rn_interval_unit),
+            detectSec, rnMode,
             String(b.id || '')
           );
         return res.redirect('/');
@@ -260,12 +270,6 @@ app.post('/', async (req, res) => {
         }
         return json({ ok: r.code >= 200 && r.code < 300, code: r.code, powered: r.powered, signal });
       }
-      case 'save_keepalive': {
-        const v = Math.max(1, parseInt(b.interval, 10) || 5);
-        const unit = b.interval_unit === 'hour' ? 60 : (b.interval_unit === 'day' ? 1440 : 1);
-        db.prepare('UPDATE pm_keepalive SET interval_min = ? WHERE id = 1').run(Math.min(43200, v * unit));
-        return res.redirect('/');
-      }
       default:
         return res.redirect('/');
     }
@@ -285,7 +289,7 @@ function buildAppData(req, error, success) {
   const userRow = db.prepare('SELECT password_hash FROM pm_users WHERE username = ?').get('admin');
   const weakPassword = userRow ? bcrypt.compareSync('admin', String(userRow.password_hash)) : false;
   const notify = db.prepare('SELECT type, tg_token, tg_chat, custom_url FROM pm_notify WHERE id = 1').get() || { type: 'none', tg_token: '', tg_chat: '', custom_url: '' };
-  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval FROM pm_clients ORDER BY sort_order, id').all();
+  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode FROM pm_clients ORDER BY sort_order, id').all();
   const groups = db.prepare('SELECT id, name FROM pm_groups ORDER BY sort_order, id').all();
   const memberMap = {};
   db.prepare('SELECT group_id, client_id FROM pm_group_members ORDER BY sort_order, client_id').all()
@@ -308,3 +312,8 @@ app.listen(PORT, () => {
   console.log('Panel Manager (SQLite) 已启动: http://127.0.0.1:' + PORT);
   console.log('默认管理员：admin / admin（登录后请立即修改）。数据库文件：data/panel.db');
 });
+
+setInterval(() => {
+  runStatusLogic().catch((err) => console.error('[后台检测]', err.message));
+}, 30000);
+console.log('后台常驻检测已开启：每 30 秒自动执行（保活 / 继期 / 状态），不受浏览器开关影响。');

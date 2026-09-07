@@ -51,7 +51,9 @@ const SCHEMA = [
     ka_ptero_sid TEXT NOT NULL DEFAULT '',
     renew INTEGER NOT NULL DEFAULT 0,
     renew_url TEXT NOT NULL DEFAULT '',
-    rn_interval INTEGER
+    rn_interval INTEGER,
+    detect_interval INTEGER,
+    renew_mode INTEGER NOT NULL DEFAULT 1
   )`,
   `CREATE TABLE IF NOT EXISTS pm_groups (
     id TEXT PRIMARY KEY,
@@ -99,6 +101,10 @@ const SCHEMA = [
     code INTEGER NOT NULL DEFAULT 0,
     renew_t INTEGER NOT NULL DEFAULT 0,
     renew_code INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS pm_detect_last (
+    client_id TEXT PRIMARY KEY,
+    t INTEGER NOT NULL DEFAULT 0
   )`,
 ];
 
@@ -230,42 +236,65 @@ const NOTIFY_COOLDOWN = 60;
 const KEEP_HOURS = 48;
 
 function statusLogic() {
-  const clients = all('SELECT id, url, name, country, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval FROM pm_clients ORDER BY sort_order, id');
-  const targets = {}, clientInfo = {}, kaTargets = {}, kaIv = {}, rnIv = {}, kaPtero = {}, rnTargets = {};
+  const clients = all('SELECT id, url, name, country, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode FROM pm_clients ORDER BY sort_order, id');
+  const now = Math.floor(Date.now() / 1000);
+  const hourK = hourKey(new Date(now * 1000));
+  const cutoff24 = hourKey(new Date((now - 86400) * 1000));
+  const cutoff48 = hourKey(new Date((now - KEEP_HOURS * 3600) * 1000));
+
+  const cards = {};
   for (const row of clients) {
     const id = String(row.id);
     const url = String(row.url || '').trim();
-    targets[id] = /^https?:\/\/.+/i.test(url) ? url : '';
-    clientInfo[id] = { name: String(row.name || '客户端'), country: String(row.country || '') };
-    
-    kaIv[id] = Number(row.ka_interval || 0);
-    rnIv[id] = Number(row.rn_interval || 0);
-    if (Number(row.keepalive) === 1 && targets[id] !== '') {
-      kaTargets[id] = targets[id];
-      const pUrl = String(row.ka_ptero_url || '').trim(), pKey = String(row.ka_ptero_key || '').trim(), pSid = String(row.ka_ptero_sid || '').trim();
-      if (Number(row.ka_ptero) === 1 && pUrl !== '' && pKey !== '' && pSid !== '') kaPtero[id] = { url: pUrl, key: pKey, sid: pSid };
-    }
-    
-    const rUrl = String(row.renew_url || '').trim();
-    if (Number(row.renew) === 1 && /^https?:\/\/.+/i.test(rUrl)) rnTargets[id] = rUrl;
+    const pUrl = String(row.ka_ptero_url || '').trim(), pKey = String(row.ka_ptero_key || '').trim(), pSid = String(row.ka_ptero_sid || '').trim();
+    cards[id] = {
+      url,
+      name: String(row.name || '客户端'),
+      country: String(row.country || ''),
+      
+      detectIv: Math.max(5, Number(row.detect_interval) || 30),
+      kaOn: Number(row.keepalive) === 1,
+      
+      kaIv: Number(row.ka_interval || 0),
+      
+      kaPtero: Number(row.ka_ptero) === 1 && pUrl !== '' && pKey !== '' && pSid !== '' ? { url: pUrl, key: pKey, sid: pSid } : null,
+      renewOn: Number(row.renew) === 1,
+      renewMode: Number(row.renew_mode) === 2 ? 2 : 1,
+      
+      rnIv: Number(row.rn_interval || 0),
+      rnUrl: /^https?:\/\/.+/i.test(String(row.renew_url || '').trim()) ? String(row.renew_url || '').trim() : '',
+    };
   }
 
-  return probeAll(Object.fromEntries(Object.entries(targets).filter(([, u]) => u !== ''))).then((probes) => {
+  const detectLast = {};
+  all('SELECT client_id, t FROM pm_detect_last').forEach((r) => { detectLast[r.client_id] = Number(r.t); });
+  const dueIds = Object.keys(cards).filter((id) => now - (detectLast[id] || 0) >= cards[id].detectIv);
+
+  const targets = {};
+  for (const id of dueIds) { if (cards[id].url !== '') targets[id] = cards[id].url; }
+
+  return probeAll(targets).then((probes) => {
     const notify = get('SELECT type, tg_token, tg_chat, custom_url FROM pm_notify WHERE id = 1') || { type: 'none' };
     const lastStates = {};
     all('SELECT client_id, s, ms, t, last_notify FROM pm_status_last').forEach((r) => { lastStates[r.client_id] = r; });
 
-    const now = Math.floor(Date.now() / 1000);
-    const hourK = hourKey(new Date(now * 1000));
-    const cutoff24 = hourKey(new Date((now - 86400) * 1000));
-    const cutoff48 = hourKey(new Date((now - KEEP_HOURS * 3600) * 1000));
-
     const current = {};
-    for (const [id, url] of Object.entries(targets)) {
-      const code = url !== '' ? ((probes[id] || {}).code || 0) : 0;
-      const ms = url !== '' ? ((probes[id] || {}).ms ?? null) : null;
+    for (const [id, cfg] of Object.entries(cards)) {
+      if (targets[id] !== undefined) {
+        const code = ((probes[id] || {}).code || 0);
+        const ms = (probes[id] || {}).ms ?? null;
+        current[id] = { s: code >= 200 && code < 500 ? 1 : 0, ms };
+      } else {
+        const prev = lastStates[id];
+        current[id] = { s: prev ? Number(prev.s) : 0, ms: prev ? (prev.ms ?? null) : null };
+      }
+    }
+
+    for (const id of dueIds) {
+      const cfg = cards[id];
+      const code = cfg.url !== '' ? ((probes[id] || {}).code || 0) : 0;
+      const ms = cfg.url !== '' ? ((probes[id] || {}).ms ?? null) : null;
       const s = code >= 200 && code < 500 ? 1 : 0;
-      current[id] = { s, ms };
 
       const prev = lastStates[id];
       const prevS = prev ? Number(prev.s) : null;
@@ -282,10 +311,10 @@ function statusLogic() {
       );
 
       if (isTransition && notify.type !== 'none' && now - lastNotify >= NOTIFY_COOLDOWN) {
-        const info = clientInfo[id] || { name: '客户端', country: '' };
+        const info = cards[id];
         const title = s === 1 ? '✅ 客户端恢复在线' : '🔴 客户端掉线';
         let body = info.name + (info.country !== '' ? `（${info.country}）` : '') + ' · ' + shDateTime(new Date(now * 1000)).slice(11);
-        if (url !== '') body += '\n' + url;
+        if (cfg.url !== '') body += '\n' + cfg.url;
         
         run('INSERT INTO pm_status_last (client_id, s, ms, t, last_notify) VALUES (?, ?, ?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET s = excluded.s, ms = excluded.ms, t = excluded.t, last_notify = excluded.last_notify',
           id, s, ms, now, now);
@@ -296,16 +325,21 @@ function statusLogic() {
         id, s, ms, now, lastNotify);
     }
 
+    for (const id of dueIds) {
+      run('INSERT INTO pm_detect_last (client_id, t) VALUES (?, ?) ON CONFLICT(client_id) DO UPDATE SET t = excluded.t', id, now);
+    }
+
     run('DELETE FROM pm_status_history WHERE hour_key < ?', cutoff48);
     run('DELETE FROM pm_status_last WHERE client_id NOT IN (SELECT id FROM pm_clients)');
     run('DELETE FROM pm_keepalive_results WHERE client_id NOT IN (SELECT id FROM pm_clients)');
+    run('DELETE FROM pm_detect_last WHERE client_id NOT IN (SELECT id FROM pm_clients)');
 
     const statRows = all('SELECT client_id, SUM(up) AS u, SUM(total) AS t, SUM(ms_sum) AS mss, SUM(ms_n) AS msn, SUM(downs) AS d FROM pm_status_history WHERE hour_key >= ? GROUP BY client_id', cutoff24);
     const stats = {};
     statRows.forEach((r) => { stats[r.client_id] = r; });
 
     const payload = {};
-    for (const [id] of Object.entries(targets)) {
+    for (const [id] of Object.entries(cards)) {
       const st = stats[id];
       const total = st ? Number(st.t) : 0;
       const up = st ? Number(st.u) : 0;
@@ -319,42 +353,57 @@ function statusLogic() {
       };
     }
 
-    const kaRow = get('SELECT interval_min FROM pm_keepalive WHERE id = 1');
-    const kaInterval = kaRow ? Math.max(1, Number(kaRow.interval_min)) : 5;
     const kaPrev = {}, kaPrevR = {};
     all('SELECT client_id, t, renew_t FROM pm_keepalive_results').forEach((r) => { kaPrev[r.client_id] = Number(r.t); kaPrevR[r.client_id] = Number(r.renew_t); });
 
-    const due = [], duePtero = [], dueRenew = [];
-    for (const [kid, url] of Object.entries(kaTargets)) {
-      const iv = kaIv[kid] > 0 ? kaIv[kid] : kaInterval;
-      const lastT = kaPrev[kid] || 0;
-      if (now - lastT < iv * 60) continue;
-      if (kaPtero[kid]) duePtero[kid] = kaPtero[kid];
-      else due[kid] = url;
-    }
-    
-    for (const [kid, url] of Object.entries(rnTargets)) {
-      const iv = rnIv[kid] > 0 ? rnIv[kid] : kaInterval;
-      const lastT = kaPrevR[kid] || 0;
-      if (now - lastT >= iv * 60) dueRenew[kid] = url;
+    const dueKa = [], duePtero = [], dueRenewMode1 = [], dueRenewMode2 = [];
+    for (const id of dueIds) {
+      const cfg = cards[id];
+      const probeCode = cfg.url !== '' ? ((probes[id] || {}).code || 0) : 0;
+      const offline = !(probeCode >= 200 && probeCode < 500);
+
+      if (cfg.kaOn && cfg.url !== '' && offline) {
+        const iv = cfg.kaIv > 0 ? cfg.kaIv * 60 : 0;
+        const lastT = kaPrev[id] || 0;
+        if (iv <= 0 || now - lastT >= iv) {
+          if (cfg.kaPtero) duePtero[id] = cfg.kaPtero;
+          else dueKa[id] = cfg.url;
+        }
+      }
+
+      if (cfg.renewOn && cfg.rnUrl !== '') {
+        if (cfg.renewMode === 2) {
+          const iv = cfg.rnIv > 0 ? cfg.rnIv * 60 : 0;
+          const lastT = kaPrevR[id] || 0;
+          if (iv <= 0 || now - lastT >= iv) dueRenewMode2[id] = cfg.rnUrl;
+        } else if (offline) {
+          dueRenewMode1[id] = cfg.rnUrl;
+        }
+      }
     }
 
     return (async () => {
-      if (Object.keys(due).length > 0) {
-        const runKa = await probeAll(due, false);
+      if (Object.keys(dueKa).length > 0) {
+        const runKa = await probeAll(dueKa, false);
         for (const [kid, r] of Object.entries(runKa)) {
           run('INSERT INTO pm_keepalive_results (client_id, t, code) VALUES (?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET t = excluded.t, code = excluded.code', kid, now, r.code);
         }
       }
-      if (Object.keys(dueRenew).length > 0) {
-        const runRn = await probeAll(dueRenew, false);
+      if (Object.keys(dueRenewMode1).length > 0) {
+        const runRn = await probeAll(dueRenewMode1, false);
         for (const [kid, r] of Object.entries(runRn)) {
           run('INSERT INTO pm_keepalive_results (client_id, t, code, renew_t, renew_code) VALUES (?, 0, 0, ?, ?) ON CONFLICT(client_id) DO UPDATE SET renew_t = excluded.renew_t, renew_code = excluded.renew_code', kid, now, r.code);
         }
       }
-
+      if (Object.keys(dueRenewMode2).length > 0) {
+        const runRn = await probeAll(dueRenewMode2, false);
+        for (const [kid, r] of Object.entries(runRn)) {
+          run('INSERT INTO pm_keepalive_results (client_id, t, code, renew_t, renew_code) VALUES (?, 0, 0, ?, ?) ON CONFLICT(client_id) DO UPDATE SET renew_t = excluded.renew_t, renew_code = excluded.renew_code', kid, now, r.code);
+        }
+      }
+      
       for (const [kid, cfg] of Object.entries(duePtero)) {
-        const probeCode = (probes[kid] || {}).code || 0;
+        const probeCode = cfg.url !== '' ? ((probes[kid] || {}).code || 0) : 0;
         let code;
         if (probeCode >= 200 && probeCode < 500) {
           code = probeCode;
@@ -371,10 +420,18 @@ function statusLogic() {
         if (Number(r.renew_t) > 0) kaRenewals[r.client_id] = { t: Number(r.renew_t), code: Number(r.renew_code) };
       });
 
-      payload._ka = { interval: kaInterval, results: kaResults, renewals: kaRenewals };
+      payload._ka = { results: kaResults, renewals: kaRenewals };
       return payload;
     })();
   });
 }
 
-module.exports = { e, attrJson, shDateTime, hourKey, kaIvText, COUNTRIES, getDB, statusLogic, pteroApi, pteroManualStart, sendNotification, PORT, DB_FILE, shTimeHM };
+let statusRun = null;
+function runStatusLogic() {
+  if (!statusRun) {
+    statusRun = Promise.resolve().then(() => statusLogic()).finally(() => { statusRun = null; });
+  }
+  return statusRun;
+}
+
+module.exports = { e, attrJson, shDateTime, hourKey, kaIvText, COUNTRIES, getDB, statusLogic, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT, DB_FILE, shTimeHM };
