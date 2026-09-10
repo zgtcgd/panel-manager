@@ -1,5 +1,15 @@
 'use strict';
-const { e, attrJson, kaIvText, COUNTRIES } = require('./core');
+const { e, attrJson, withScheme, COUNTRIES } = require('./core');
+
+function remainText(ds) {
+  const m = String(ds || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return '';
+  const diff = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59) - Date.now();
+  if (diff <= 0) return '已到期';
+  const h = Math.max(1, Math.ceil(diff / 3600000));
+  if (h < 24) return '剩余时间：' + h + ' 小时';
+  return '剩余时间：' + Math.floor(h / 24) + ' 天 ' + (h % 24) + ' 小时';
+}
 
 const CSS = `
 :root {
@@ -82,6 +92,10 @@ main { max-width: 1250px; margin: 0 auto; padding: 42px clamp(20px, 5vw, 72px) }
 .drop-zone.dragover { background: #eef2ff; border-color: var(--primary) }
 .group.dragover { background: #eef2ff; border-color: var(--primary) }
 .drop-zone.gap { background: #eef2ff80; border-color: var(--primary); margin: 6px 0 }
+.group-drag-handle { position: static; width: 22px; height: 22px; font-size: 14px; flex: 0 0 auto }
+.group.dragging { opacity: .5; outline: 2px dashed var(--primary) }
+.expire { margin-left: 10px; font-size: 12px; color: var(--muted); white-space: nowrap }
+.expire.expired { color: var(--red) }
 
 /* ---------- 分组 ---------- */
 .group { padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fafbff; margin-bottom: 26px }
@@ -123,12 +137,12 @@ main { max-width: 1250px; margin: 0 auto; padding: 42px clamp(20px, 5vw, 72px) }
 
 /* ---------- 访客（只读）隐藏规则 ---------- */
 body.guest .add-form,
-body.guest .icon-btn,
+body.guest .icon-btn:not(.login-btn),
 body.guest .group-actions,
 body.guest .card-actions,
 body.guest .ka,
 body.guest .drag-handle,
-body.guest .modal-bg { display: none !important }
+body.guest .modal-bg:not(#login) { display: none !important }
 
 @media (max-width: 700px) {
   body { font-size: 14px }
@@ -175,23 +189,6 @@ function pageStart(title, bodyClass) {
 <style>${CSS}</style></head><body${bodyClass ? ` class="${bodyClass}"` : ''}>`;
 }
 
-function loginPage(error) {
-  return pageStart('Panel Manager') + `<div class="login"><form class="login-box" method="post">
-<div class="brand">Panel <span>Manager</span></div>
-<div class="sub">监测客户端状态</div>
-${error ? `<div class="alert">${e(error)}</div>` : ''}
-<input type="hidden" name="action" value="login">
-<label>用户名</label>
-<input class="input" name="username" value="admin" autocomplete="username" required>
-<label>密码</label>
-<input class="input" type="password" name="password" autocomplete="current-password" required>
-<button class="btn full">登录管理面板</button>
-</form>
-<div class="login-tip"><a href="/guest">访客只读访问（无需密码）</a></div>
-</div>
-</body></html>`;
-}
-
 function flagFor(country) {
   const item = COUNTRIES.find((c) => c[1] === country);
   return item ? item[0] : '🌐';
@@ -209,14 +206,13 @@ function flagImg(c) {
   return e(emoji);
 }
 
-function cardHtml(c, csrf, kaInterval, isGuest) {
-  const cIv = Number(c.ka_interval || 0), rIv = Number(c.rn_interval || 0);
+function cardHtml(c, csrf, isGuest) {
   const kaToggles = isGuest ? '' : `<div class="ka-group"><label class="ka" title="检测到掉线时自动访问该网址（保活间隔 0 = 立即）"><input type="checkbox" class="ka-cb" data-id="${e(c.id)}"${Number(c.keepalive) === 1 ? ' checked' : ''} onchange="toggleKa(this)"><i></i>保活</label><span class="ka-last" data-id="${e(c.id)}" data-kind="ka"></span><label class="ka" title="按所选继期模式自动访问继期网址"><input type="checkbox" class="rn-cb" data-id="${e(c.id)}"${Number(c.renew) === 1 ? ' checked' : ''} onchange="toggleRn(this)"><i></i>继期</label><span class="ka-last" data-id="${e(c.id)}" data-kind="rn"></span></div>`;
   const cardActions = isGuest ? '' : `<div class="card-actions"><button type="button" class="btn small" onclick="editClient(${attrJson(c)})">编辑</button><form method="post" onsubmit="return confirm('确定删除此客户端？')"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="delete_client"><input type="hidden" name="id" value="${e(c.id)}"><button class="btn danger">删除</button></form></div>`;
-  const urlLink = isGuest ? '' : `<a class="url" href="${e(c.url)}" target="_blank" rel="noreferrer">${e(c.url)}</a>`;
+  const urlLink = isGuest ? '' : `<a class="url" href="${e(withScheme(c.url))}" target="_blank" rel="noreferrer">${e(c.url)}</a>`;
   return `<article class="client" data-id="${e(c.id)}">${isGuest ? '' : '<span class="drag-handle" title="按住此手柄拖动排序">⠿</span>'}
 <div class="client-head"><div class="flag">${flagImg(c)}</div><div>
-<h3>${e(c.name || '未命名客户端')}</h3>
+<h3>${e(c.name || '未命名客户端')}${Number(c.expire_enabled) === 1 && c.expire_date ? `<span class="expire" title="到期时间：${e(c.expire_date)}" data-expire="${e(c.expire_date)}">${remainText(c.expire_date)}</span>` : ''}</h3>
 <div class="country">${e(c.country || '其他')}</div>
 <div class="status" data-online=""><i class="dot"></i><span class="status-text">检测中</span></div>
 <div class="metrics">…</div>
@@ -228,7 +224,7 @@ ${urlLink}
 }
 
 function appPage(d) {
-  const { csrf, user, weakPassword, error, success, clients, groups, notify, kaInterval, kaGV, kaGU, isGuest } = d;
+  const { csrf, user, weakPassword, error, success, clients, groups, notify, isGuest, loginError } = d;
   const guest = !!isGuest;
   const assignedIds = {};
   groups.forEach((g) => (g.client_ids || []).forEach((cid) => { assignedIds[cid] = true; }));
@@ -236,13 +232,13 @@ function appPage(d) {
   const ungroupedCount = ungrouped.length;
   const countryOptions = COUNTRIES.map(([flag, country]) => `<option value="${e(country)}">${e(flag)} ${e(country)}</option>`).join('');
 
-  const cardsHtml = ungrouped.map((c) => cardHtml(c, csrf, kaInterval, guest)).join('');
+  const cardsHtml = ungrouped.map((c) => cardHtml(c, csrf, guest)).join('');
   const groupsHtml = groups.map((g) => {
     const members = (g.client_ids || []).map((cid) => clients.find((c) => c.id === cid)).filter(Boolean);
-    const cards = members.map((c) => cardHtml(c, csrf, kaInterval, guest)).join('');
+    const cards = members.map((c) => cardHtml(c, csrf, guest)).join('');
     const groupActions = guest ? '' : `<div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', '${e(JSON.stringify(g.client_ids || []))}')">编辑</button><button type="button" class="btn danger" onclick="openDeleteGroupModal('${e(g.id)}', '${e(g.name || '未命名分组')}', ${(g.client_ids || []).length})">删除</button></div>`;
     return `<section class="group" data-group="${e(g.id)}">
-<div class="group-head"><div class="group-title">${e(g.name || '未命名分组')}<span class="gcount">${(g.client_ids || []).length}</span></div>${groupActions}</div>
+<div class="group-head"><div class="group-title">${guest ? '' : '<span class="drag-handle group-drag-handle" title="按住此手柄拖动分组排序">⠿</span>'}${e(g.name || '未命名分组')}<span class="gcount">${(g.client_ids || []).length}</span></div>${groupActions}</div>
 <div class="grid drop-zone" data-zone="${e(g.id)}">${cards}${(g.client_ids || []).length === 0 ? '<div class="empty" style="grid-column:1/-1;padding:28px">拖拽客户端卡片到这里，加入此分组</div>' : ''}</div>
 </section>`;
   }).join('');
@@ -251,34 +247,58 @@ function appPage(d) {
 
   const userLabel = guest ? '访客（只读）' : `管理员：${e(user)}`;
   const weakAlert = guest || !weakPassword ? '' : '<div class="alert" style="background:#fff8e6;color:#9a6b00">安全提示：管理员仍在使用默认密码 admin，请点击右上角齿轮图标立即修改。</div>';
+  const loginBtn = guest ? `<button class="icon-btn login-btn" title="登录管理面板" onclick="openLogin()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg></button>` : '';
+  const logoutForm = guest ? '' : `<form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="logout"><button class="btn ghost">退出</button></form>`;
   const gearBtn = guest ? '' : `<button class="icon-btn" title="系统设置" onclick="openModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg></button>`;
   const addForm = guest ? '' : `<form class="add-form" method="post">
 <input type="hidden" name="csrf" value="${csrf}">
 <input type="hidden" name="action" value="add_client">
 <div><label>客户端名称</label><input class="input" name="name" placeholder="客户端名称" required></div>
 <div><label>国家 / 地区</label><input class="input country-search" name="country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required></div>
-<div class="wide"><label>客户端网址</label><input class="input" name="url" type="url" placeholder="https://example.com" required></div>
+<div class="wide"><label>客户端网址</label><input class="input" name="url" type="text" placeholder="example.com 或 https://example.com" required></div>
 <button class="btn">+ 添加客户端</button>
 </form>`;
   const ungroupedActions = guest ? '' : '<div class="group-actions"><button type="button" class="btn ghost" onclick="openGroupModal(null)">+ 新建分组</button></div>';
 
   const modals = `
-<div class="modal-bg" id="edit"><div class="modal"><div class="modal-title"><h2>编辑客户端</h2><button class="close" type="button" onclick="closeEdit()">×</button></div><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="edit_client"><input type="hidden" name="id" id="edit-id"><label>客户端名称</label><input class="input" name="name" id="edit-name" required><label>国家 / 地区</label><input class="input country-search" name="country" id="edit-country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required><label>客户端网址</label><input class="input" name="url" id="edit-url" type="url" required><label>后台检测间隔（秒，留空默认 30 秒；每张卡片按此节奏单独检测）</label><input class="input" type="number" name="detect_interval" id="edit-detect" min="5" placeholder="30" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;margin:6px 0 2px"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0"><input type="checkbox" name="ka_ptero" id="edit-ka-ptero" onchange="kaPteroChange()">翼龙面板保活</label></div><div id="ka-ptero-rows" style="display:none"><div style="display:flex;gap:10px;margin:2px 0 8px"><button type="button" class="btn small" onclick="kaManual(this,'start')">手动开启</button><button type="button" class="btn small" style="background:#fff0f0;color:var(--red)" onclick="kaManual(this,'stop')">手动停止</button></div><label>翼龙面板 API 地址</label><input class="input" name="ka_ptero_url" id="edit-ka-ptero-url" placeholder="例如 https://panel.example.com"><label>API Key（客户端 API 密钥）</label><input class="input" name="ka_ptero_key" id="edit-ka-ptero-key" placeholder="ptlc_ 开头的 Client API Key"><label>服务器 ID（实例标识符）</label><input class="input" name="ka_ptero_sid" id="edit-ka-ptero-sid" placeholder="在翼龙面板服务器列表页可见，例如 9f4a2b1c"></div><label>保活间隔（分钟；0 或留空 = 检测到离线立即访问）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="ka_interval" id="edit-ka" min="0" placeholder="0（立即）" style="flex:1"><select class="select" name="ka_interval_unit" id="edit-ka-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><label>继期网址（继期开关的访问目标；可留空）</label><input class="input" name="renew_url" id="edit-renew-url" type="url" placeholder="https://example.com/renew"><label>继期模式</label><div style="display:flex;gap:14px;margin:7px 0 16px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;margin:0"><input type="radio" name="renew_mode" value="1" id="edit-rn-mode1" checked>离线继期（掉线立即访问）</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;margin:0"><input type="radio" name="renew_mode" value="2" id="edit-rn-mode2">定时继期（按间隔定时访问，不论在线）</label></div><label>继期间隔（分钟；0 = 每轮，仅「定时继期」模式使用）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="rn_interval" id="edit-rn" min="0" placeholder="0" style="flex:1"><select class="select" name="rn_interval_unit" id="edit-rn-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><button class="btn full">保存修改</button></form></div></div>
-<div class="modal-bg" id="settings"><div class="modal"><div class="modal-title"><h2>系统设置</h2><button class="close" onclick="closeModal()">×</button></div><p style="color:var(--muted);font-size:13px">修改管理员 admin 的登录密码</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="change_password"><label>当前密码</label><input class="input" type="password" name="old_password" required><label>新密码</label><input class="input" type="password" name="new_password" minlength="6" required><label>确认新密码</label><input class="input" type="password" name="confirm_password" minlength="6" required><button class="btn full">保存新密码</button></form><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">掉线 / 恢复通知（Telegram）：客户端状态变化时推送，需保持至少一个已登录页面在后台轮询</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="notify-action" value="save_notify"><label>通知开关</label><select class="select" name="notify_type" id="notify-type" onchange="notifyTypeChange()"><option value="none"${notify.type === 'none' ? ' selected' : ''}>关闭</option><option value="telegram"${notify.type === 'telegram' ? ' selected' : ''}>开启（Telegram）</option><option value="custom"${notify.type === 'custom' ? ' selected' : ''}>自定义 GET 地址</option></select><div id="notify-row-telegram" style="display:none"><label>Bot Token</label><input class="input" name="tg_token" value="${e(notify.tg_token || '')}" placeholder="123456:ABC-DEF...（找 @BotFather 创建）"><label>Chat ID</label><input class="input" name="tg_chat" value="${e(notify.tg_chat || '')}" placeholder="接收通知的聊天 ID"></div><div id="notify-row-custom" style="display:none"><label>GET 地址模板（{title}、{body} 为占位符）</label><input class="input" name="custom_url" value="${e(notify.custom_url || '')}" placeholder="https://example.com/push?title={title}&body={body}"></div><div style="display:flex;gap:10px;margin-top:4px"><button type="submit" class="btn" style="flex:1" onclick="document.getElementById('notify-action').value='save_notify'">保存通知配置</button><button type="submit" class="btn ghost" style="flex:1" onclick="document.getElementById('notify-action').value='test_notify'">发送测试</button></div></form></div><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">保活 / 继期 / 状态检测全部由 Node 后台自动执行：每张卡片按各自的「后台检测间隔」单独检测，浏览器关闭、管理员退出登录都不影响。保活：检测到掉线时自动访问客户端网址（间隔 0 = 立即）；翼龙面板保活在卡片勾选后生效。继期：离线继期模式掉线即访问继期网址；定时继期模式按继期间隔定时访问。</p></div></div></div>
+<div class="modal-bg${loginError ? ' open' : ''}" id="login"><div class="modal"><div class="modal-title"><h2>登录管理面板</h2><button class="close" type="button" onclick="closeLoginModal()">×</button></div>${loginError ? `<div class="alert">${e(loginError)}</div>` : ''}<form method="post"><input type="hidden" name="action" value="login"><label>用户名</label><input class="input" name="username" autocomplete="username" required><label>密码</label><input class="input" type="password" name="password" autocomplete="current-password" required><button class="btn full">登录</button></form></div></div>
+<div class="modal-bg" id="edit"><div class="modal"><div class="modal-title"><h2>编辑客户端</h2><button class="close" type="button" onclick="closeEdit()">×</button></div><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="edit_client"><input type="hidden" name="id" id="edit-id"><label>客户端名称</label><input class="input" name="name" id="edit-name" required><label>国家 / 地区</label><input class="input country-search" name="country" id="edit-country" list="country-options" placeholder="输入国家名快速定位，或点击选择" autocomplete="off" required><label>客户端网址</label><input class="input" name="url" id="edit-url" type="text" placeholder="example.com 或 https://example.com" required><div style="display:flex;align-items:center;gap:10px;margin:0 0 10px"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0"><input type="checkbox" name="expire_enabled" id="edit-expire-on" onchange="expireChange()">到期时间</label><span id="expire-rows" style="display:none;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted)">年 <select class="select" name="expire_y" id="edit-expire-y" style="width:92px;margin:0;padding:8px 10px"></select>月 <select class="select" name="expire_m" id="edit-expire-m" style="width:66px;margin:0;padding:8px 10px"></select>日 <select class="select" name="expire_d" id="edit-expire-d" style="width:66px;margin:0;padding:8px 10px"></select></span></div><label>后台检测间隔（数值 + 单位，留空默认 30 秒；每张卡片按此节奏单独检测）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="detect_interval" id="edit-detect" min="1" placeholder="30" style="flex:1"><select class="select" name="detect_interval_unit" id="edit-detect-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="sec" selected>秒</option><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><div style="display:flex;align-items:center;gap:10px;margin:6px 0 2px"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0"><input type="checkbox" name="ka_ptero" id="edit-ka-ptero" onchange="kaPteroChange()">翼龙面板保活</label></div><div id="ka-ptero-rows" style="display:none"><div style="display:flex;gap:10px;margin:2px 0 8px"><button type="button" class="btn small" onclick="kaManual(this,'start')">手动开启</button><button type="button" class="btn small" style="background:#fff0f0;color:var(--red)" onclick="kaManual(this,'stop')">手动停止</button></div><label>翼龙面板 API 地址</label><input class="input" name="ka_ptero_url" id="edit-ka-ptero-url" placeholder="例如 https://panel.example.com"><label>API Key（客户端 API 密钥）</label><input class="input" name="ka_ptero_key" id="edit-ka-ptero-key" placeholder="ptlc_ 开头的 Client API Key"><label>服务器 ID（实例标识符）</label><input class="input" name="ka_ptero_sid" id="edit-ka-ptero-sid" placeholder="在翼龙面板服务器列表页可见，例如 9f4a2b1c"></div><label>保活间隔（分钟；0 或留空 = 检测到离线立即访问）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="ka_interval" id="edit-ka" min="0" placeholder="0（立即）" style="flex:1"><select class="select" name="ka_interval_unit" id="edit-ka-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><label>继期网址（继期开关的访问目标；可留空）</label><input class="input" name="renew_url" id="edit-renew-url" type="url" placeholder="https://example.com/renew"><label>继期模式</label><div style="display:flex;gap:14px;margin:7px 0 16px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;margin:0"><input type="radio" name="renew_mode" value="1" id="edit-rn-mode1" checked>离线继期（掉线立即访问）</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500;margin:0"><input type="radio" name="renew_mode" value="2" id="edit-rn-mode2">定时继期（按间隔定时访问，不论在线）</label></div><label>继期间隔（分钟；0 = 每轮，仅「定时继期」模式使用）</label><div style="display:flex;gap:8px"><input class="input" type="number" name="rn_interval" id="edit-rn" min="0" placeholder="0" style="flex:1"><select class="select" name="rn_interval_unit" id="edit-rn-unit" style="flex:0 0 96px;margin:7px 0 16px"><option value="min">分钟</option><option value="hour">小时</option><option value="day">天</option></select></div><button class="btn full">保存修改</button></form></div></div>
+<div class="modal-bg" id="settings"><div class="modal"><div class="modal-title"><h2>系统设置</h2><button class="close" onclick="closeModal()">×</button></div><p style="color:var(--muted);font-size:13px">修改管理员 admin 的登录密码</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="change_password"><label>当前密码</label><input class="input" type="password" name="old_password" required><label>新密码</label><input class="input" type="password" name="new_password" minlength="6" required><label>确认新密码</label><input class="input" type="password" name="confirm_password" minlength="6" required><button class="btn full">保存新密码</button></form><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">通知渠道（Telegram / 自定义 GET）：勾选下方通知项后生效，由 Node 后台自动发送</p><form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="notify-action" value="save_notify"><label>通知渠道</label><select class="select" name="notify_type" id="notify-type" onchange="notifyTypeChange()"><option value="none"${notify.type === 'none' ? ' selected' : ''}>不使用</option><option value="telegram"${notify.type === 'telegram' ? ' selected' : ''}>Telegram</option><option value="custom"${notify.type === 'custom' ? ' selected' : ''}>自定义 GET 地址</option></select><div style="margin:12px 0 4px"><label style="font-weight:600;margin:0 0 6px">通知项</label><label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;margin:0;font-weight:500"><input type="checkbox" name="remind_expire" style="margin-top:3px"${Number(notify.remind_expire) === 1 ? ' checked' : ''}><span>到期提醒：已设置「到期时间」的客户端剩余不足 24 小时时推送一次（每个到期日只提醒一次，修改到期日期后会重新提醒）</span></label></div><div id="notify-row-telegram" style="display:none"><label>Bot Token</label><input class="input" name="tg_token" value="${e(notify.tg_token || '')}" placeholder="123456:ABC-DEF...（找 @BotFather 创建）"><label>Chat ID</label><input class="input" name="tg_chat" value="${e(notify.tg_chat || '')}" placeholder="接收通知的聊天 ID"></div><div id="notify-row-custom" style="display:none"><label>GET 地址模板（{title}、{body} 为占位符）</label><input class="input" name="custom_url" value="${e(notify.custom_url || '')}" placeholder="https://example.com/push?title={title}&body={body}"></div><div style="display:flex;gap:10px;margin-top:4px"><button type="submit" class="btn" style="flex:1" onclick="document.getElementById('notify-action').value='save_notify'">保存通知配置</button><button type="submit" class="btn ghost" style="flex:1" onclick="document.getElementById('notify-action').value='test_notify'">发送测试</button></div></form></div><div style="border-top:1px solid var(--line);margin:20px 0 14px;padding-top:16px"><p style="color:var(--muted);font-size:13px;margin:0 0 10px">保活 / 继期 / 状态检测全部由 Node 后台自动执行：每张卡片按各自的「后台检测间隔」单独检测，浏览器关闭、管理员退出登录都不影响。保活：检测到掉线时自动访问客户端网址（间隔 0 = 立即）；翼龙面板保活在卡片勾选后生效。继期：离线继期模式掉线即访问继期网址；定时继期模式按继期间隔定时访问。</p></div></div></div>
 <div class="modal-bg" id="group-modal"><div class="modal"><div class="modal-title"><h2 id="group-modal-title">新建分组</h2><button class="close" type="button" onclick="closeGroupModal()">×</button></div><form method="post" id="group-form"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="group-action" value="create_group"><input type="hidden" name="id" id="group-id"><label>分组名称</label><input class="input" name="name" id="group-name" placeholder="例如：亚洲节点" required><label style="display:block;margin:4px 0 6px">选择要加入的客户端（可多选，可留空）</label><div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:16px">${groupClientCbs}</div><button class="btn full">保存分组</button></form></div></div>
 <div class="modal-bg" id="delete-group-modal"><div class="modal"><div class="modal-title"><h2>删除分组</h2><button class="close" type="button" onclick="closeDeleteGroupModal()">×</button></div><p style="color:var(--muted);font-size:13px;margin:0">分组「<b id="dgm-name" style="color:var(--ink)"></b>」包含 <b id="dgm-count" style="color:var(--ink)">0</b> 个客户端，请选择删除方式：</p><form method="post" id="delete-group-form" style="margin-top:18px"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" id="dgm-action" value="delete_group"><input type="hidden" name="id" id="dgm-id"><div style="display:flex;flex-direction:column;gap:10px"><button type="submit" class="btn" onclick="document.getElementById('dgm-action').value='delete_group'">删除分组，但不删除所属客户端</button><button type="submit" class="btn danger" onclick="document.getElementById('dgm-action').value='delete_group_with_clients'">删除分组及所属客户端</button></div></form></div></div>`;
 
-  return pageStart('Panel Manager', guest ? 'guest' : '') + `<div class="app"><header class="topbar"><div class="brand">Panel <span>Manager</span></div><div class="top-actions"><span class="user">${userLabel}</span>${gearBtn}<form method="post"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="action" value="logout"><button class="btn ghost">退出</button></form></div></header><main>${weakAlert}<div class="heading"><div><h1>客户端概览</h1><p>实时查看各个客户端是否在线</p></div><div class="stats"><span><b>${clients.length}</b>客户端</span><span><b id="online-count">…</b>在线</span></div></div>${error ? `<div class="alert">${e(error)}</div>` : ''}${success ? `<div class="alert success">${e(success)}</div>` : ''}${addForm}<section class="group${ungroupedCount === 0 ? ' collapsed' : ''}" id="ungrouped-sec"><div class="group-head"><div class="group-title">未分组<span class="gcount" id="group-count">${ungroupedCount}</span></div>${ungroupedActions}</div><div class="grid drop-zone" data-zone="">${cardsHtml}</div></section>${groupsHtml}</main></div><datalist id="country-options">${countryOptions}</datalist>${modals}<script>
+  return pageStart('Panel Manager', guest ? 'guest' : '') + `<div class="app"><header class="topbar"><div class="brand">Panel <span>Manager</span></div><div class="top-actions"><span class="user">${userLabel}</span>${loginBtn}${gearBtn}${logoutForm}</div></header><main>${weakAlert}<div class="heading"><div><h1>客户端概览</h1><p>实时查看各个客户端是否在线</p></div><div class="stats"><span><b>${clients.length}</b>客户端</span><span><b id="online-count">…</b>在线</span></div></div>${error ? `<div class="alert">${e(error)}</div>` : ''}${success ? `<div class="alert success">${e(success)}</div>` : ''}${addForm}<section class="group${ungroupedCount === 0 ? ' collapsed' : ''}" id="ungrouped-sec"><div class="group-head"><div class="group-title">未分组<span class="gcount" id="group-count">${ungroupedCount}</span></div>${ungroupedActions}</div><div class="grid drop-zone" data-zone="">${cardsHtml}</div></section>${groupsHtml}</main></div><datalist id="country-options">${countryOptions}</datalist>${modals}<script>
 ${CLIENT_JS}
 </script></body></html>`;
 }
 
 const CLIENT_JS = `
+const loginModal = document.getElementById('login');
+function openLogin() { loginModal.classList.add('open'); }
+function closeLoginModal() { loginModal.classList.remove('open'); }
+loginModal.addEventListener('click', (ev) => { if (ev.target === loginModal) closeLoginModal(); });
+function remainText(ds) {
+  const m = String(ds || '').match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/);
+  if (!m) return '';
+  const diff = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59) - Date.now();
+  if (diff <= 0) return '已到期';
+  const h = Math.max(1, Math.ceil(diff / 3600000));
+  if (h < 24) return '剩余时间：' + h + ' 小时';
+  return '剩余时间：' + Math.floor(h / 24) + ' 天 ' + (h % 24) + ' 小时';
+}
 function editClient(c) {
   document.getElementById('edit-id').value = c.id;
   document.getElementById('edit-name').value = c.name || '';
   document.getElementById('edit-country').value = c.country || '其他';
   document.getElementById('edit-url').value = c.url || '';
+  expireFill(c.expire_date ? parseInt(c.expire_date, 10) : 0);
+  document.getElementById('edit-expire-on').checked = Number(c.expire_enabled) === 1;
+  const expM = String(c.expire_date || '').match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/);
+  const nowD = new Date();
+  document.getElementById('edit-expire-y').value = expM ? Number(expM[1]) : nowD.getFullYear();
+  document.getElementById('edit-expire-m').value = expM ? Number(expM[2]) : nowD.getMonth() + 1;
+  document.getElementById('edit-expire-d').value = expM ? Number(expM[3]) : nowD.getDate();
+  expireChange();
   const iv = parseInt(c.ka_interval) || 0;
   const kaDisp = iv > 0 && iv % 1440 === 0 ? { v: iv / 1440, u: 'day' } : (iv > 0 && iv % 60 === 0 ? { v: iv / 60, u: 'hour' } : { v: iv > 0 ? iv : '', u: 'min' });
   document.getElementById('edit-ka').value = kaDisp.v;
@@ -287,7 +307,10 @@ function editClient(c) {
   const rnDisp = rnIvD > 0 && rnIvD % 1440 === 0 ? { v: rnIvD / 1440, u: 'day' } : (rnIvD > 0 && rnIvD % 60 === 0 ? { v: rnIvD / 60, u: 'hour' } : { v: rnIvD > 0 ? rnIvD : '', u: 'min' });
   document.getElementById('edit-rn').value = rnDisp.v;
   document.getElementById('edit-rn-unit').value = rnDisp.u;
-  document.getElementById('edit-detect').value = parseInt(c.detect_interval) > 0 ? parseInt(c.detect_interval) : '';
+  const detN = parseInt(c.detect_interval) || 0;
+  const detDisp = detN > 0 ? (detN % 86400 === 0 ? { v: detN / 86400, u: 'day' } : (detN % 3600 === 0 ? { v: detN / 3600, u: 'hour' } : (detN % 60 === 0 ? { v: detN / 60, u: 'min' } : { v: detN, u: 'sec' }))) : { v: '', u: 'sec' };
+  document.getElementById('edit-detect').value = detDisp.v;
+  document.getElementById('edit-detect-unit').value = detDisp.u;
   document.getElementById('edit-rn-mode1').checked = Number(c.renew_mode || 1) !== 2;
   document.getElementById('edit-rn-mode2').checked = Number(c.renew_mode || 1) === 2;
   document.getElementById('edit-renew-url').value = c.renew_url || '';
@@ -297,6 +320,32 @@ function editClient(c) {
   document.getElementById('edit-ka-ptero-sid').value = c.ka_ptero_sid || '';
   kaPteroChange();
   document.getElementById('edit').classList.add('open');
+}
+function expireFill(minY) {
+  const yS = document.getElementById('edit-expire-y'), mS = document.getElementById('edit-expire-m'), dS = document.getElementById('edit-expire-d');
+  if (!yS) return;
+  const nowY = new Date().getFullYear();
+  const fromY = Math.min(nowY, Number(minY) || nowY);
+  if (yS.options.length === 0 || Number(yS.options[0].value) > fromY) {
+    let oy = '';
+    for (let y = fromY; y <= nowY + 10; y++) oy += '<option value="' + y + '">' + y + '</option>';
+    yS.innerHTML = oy;
+  }
+  if (mS.options.length === 0) {
+    let om = '';
+    for (let m = 1; m <= 12; m++) om += '<option value="' + m + '">' + m + '</option>';
+    mS.innerHTML = om;
+  }
+  if (dS.options.length === 0) {
+    let od = '';
+    for (let d = 1; d <= 31; d++) od += '<option value="' + d + '">' + d + '</option>';
+    dS.innerHTML = od;
+  }
+}
+function expireChange() {
+  expireFill();
+  const r = document.getElementById('expire-rows');
+  if (r) r.style.display = document.getElementById('edit-expire-on').checked ? 'inline-flex' : 'none';
 }
 function kaPteroChange() {
   const r = document.getElementById('ka-ptero-rows');
@@ -372,7 +421,22 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
     }
     return null;
   }
+  function getGroupAfter(y) {
+    const els = [...document.querySelectorAll('.group[data-group]:not(.dragging)')];
+    for (const el of els) {
+      const b = el.getBoundingClientRect();
+      if (y < b.top + b.height / 2) return el;
+    }
+    return null;
+  }
+  const isGroupDrag = () => !!dragged && dragged.classList.contains('group');
   document.addEventListener('mousedown', e => {
+    const gh = e.target.closest('.group-drag-handle');
+    if (gh) {
+      const g = gh.closest('.group[data-group]');
+      if (g) g.draggable = true;
+      return;
+    }
     const card = e.target.closest('.client');
     if (!card) return;
     if (e.target.closest('a,button,input,h3,.country,.status-text,.metrics,.ka,.client-foot span')) return;
@@ -381,11 +445,34 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
   document.addEventListener('dragstart', e => {
     if (e.target.closest('a,button,input')) return;
     const card = e.target.closest('.client');
-    if (!card) return;
-    dragged = card;
-    card.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch (_) { }
+    if (card) {
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', card.dataset.id); } catch (_) { }
+      return;
+    }
+    const grp = e.target.closest('.group[data-group]');
+    if (grp) {
+      dragged = grp;
+      grp.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', grp.dataset.group); } catch (_) { }
+    }
+  });
+  // 分组拖拽：经过其他分组时实时互换位置（未分组区固定最前，不参与排序）
+  document.addEventListener('dragover', e => {
+    if (!isGroupDrag()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const after = getGroupAfter(e.clientY);
+    if (after == null) {
+      const gs = document.querySelectorAll('.group[data-group]:not(.dragging)');
+      const last = gs[gs.length - 1];
+      if (last && last !== dragged) last.after(dragged);
+    } else if (after !== dragged) {
+      after.before(dragged);
+    }
   });
   document.addEventListener('dragend', () => {
     if (dragged) { dragged.classList.remove('dragging'); dragged.draggable = false; }
@@ -398,7 +485,7 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
     const zone = group.querySelector('.drop-zone');
     if (!zone) return;
     group.addEventListener('dragover', e => {
-      if (!dragged) return;
+      if (!dragged || isGroupDrag()) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       group.classList.add('dragover');
@@ -414,7 +501,7 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
     group.addEventListener('drop', e => {
       e.preventDefault();
       group.classList.remove('dragover');
-      if (dragged) {
+      if (dragged && !isGroupDrag()) {
         if (zone && zone !== dragged.parentElement) {
           const after = getAfter(zone, e.clientX, e.clientY);
           if (after == null) zone.appendChild(dragged); else zone.insertBefore(dragged, after);
@@ -425,10 +512,17 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
       }
     });
   });
-  let touchDrag = null;
+  let touchDrag = null; // { card } 卡片拖拽 或 { group } 分组拖拽
   document.addEventListener('touchstart', e => {
     const h = e.target.closest('.drag-handle');
     if (!h) return;
+    const g = h.closest('.group[data-group]');
+    if (g && h.classList.contains('group-drag-handle')) {
+      touchDrag = { group: g };
+      g.classList.add('dragging');
+      e.preventDefault();
+      return;
+    }
     const card = h.closest('.client');
     if (!card) return;
     touchDrag = { card: card };
@@ -439,6 +533,17 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
     if (!touchDrag) return;
     e.preventDefault();
     const t = e.touches[0];
+    if (touchDrag.group) {
+      const after = getGroupAfter(t.clientY);
+      if (after == null) {
+        const gs = document.querySelectorAll('.group[data-group]:not(.dragging)');
+        const last = gs[gs.length - 1];
+        if (last && last !== touchDrag.group) last.after(touchDrag.group);
+      } else if (after !== touchDrag.group) {
+        after.before(touchDrag.group);
+      }
+      return;
+    }
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const group = el ? el.closest('.group') : null;
     if (group) {
@@ -451,6 +556,12 @@ document.getElementById('delete-group-modal').addEventListener('click', e => { i
   }, { passive: false });
   document.addEventListener('touchend', e => {
     if (!touchDrag) return;
+    if (touchDrag.group) {
+      touchDrag.group.classList.remove('dragging');
+      touchDrag = null;
+      saveLayout();
+      return;
+    }
     const card = touchDrag.card;
     const t = e.changedTouches[0];
     const el = t ? document.elementFromPoint(t.clientX, t.clientY) : null;
@@ -495,10 +606,12 @@ function saveLayout() {
     membership[zid] = [];
     zone.querySelectorAll('.client').forEach(card => { membership[zid].push(card.dataset.id); });
   });
+  const groupOrder = [];
+  document.querySelectorAll('.group[data-group]').forEach(g => { groupOrder.push(g.dataset.group); });
   const body = new URLSearchParams();
   body.append('csrf', document.querySelector('input[name="csrf"]').value);
   body.append('action', 'save_layout');
-  body.append('layout', JSON.stringify({ order: order, membership: membership }));
+  body.append('layout', JSON.stringify({ order: order, membership: membership, groupOrder: groupOrder }));
   fetch('/', { method: 'POST', credentials: 'same-origin', body: body }).catch(() => { });
 }
 function metricText(d) {
@@ -527,6 +640,7 @@ function refreshStatus() {
       const m = card.querySelector('.metrics');
       if (m && d) m.textContent = metricText(d);
     });
+    document.querySelectorAll('.expire[data-expire]').forEach(el => { const t = remainText(el.dataset.expire); el.textContent = t; el.classList.toggle('expired', t === '已到期'); });
     const oc = document.getElementById('online-count');
     if (oc) oc.textContent = onlineCount;
     const shTime = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -573,4 +687,4 @@ refreshStatus();
 setInterval(refreshStatus, 30000);
 `;
 
-module.exports = { loginPage, appPage, CSS };
+module.exports = { appPage };

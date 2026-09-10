@@ -11,7 +11,6 @@ const { COUNTRIES } = require('./countries');
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'panel.db');
-
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
 
 const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -21,13 +20,11 @@ const SH = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: '
 function shParts(d) { const p = {}; for (const x of SH.formatToParts(d)) p[x.type] = x.value; return p; }
 function shDateTime(d) { const p = shParts(d); return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`; }
 function hourKey(d) { const p = shParts(d); return `${p.year}${p.month}${p.day}${p.hour}`; }
-const shTimeHM = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-
-function kaIvText(m) {
-  m = Math.max(1, m);
-  if (m % 1440 === 0) return (m / 1440) + ' 天';
-  if (m % 60 === 0) return (m / 60) + ' 小时';
-  return m + ' 分钟';
+function shExpireDeadline(ds) {
+  const m = String(ds || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return 0;
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1) / 1000 - 8 * 3600;
+  return Number.isFinite(t) && t > 0 ? t : 0;
 }
 
 let db = null;
@@ -53,7 +50,10 @@ const SCHEMA = [
     renew_url TEXT NOT NULL DEFAULT '',
     rn_interval INTEGER,
     detect_interval INTEGER,
-    renew_mode INTEGER NOT NULL DEFAULT 1
+    renew_mode INTEGER NOT NULL DEFAULT 1,
+    expire_enabled INTEGER NOT NULL DEFAULT 0,
+    expire_date TEXT NOT NULL DEFAULT '',
+    expire_reminded_date TEXT NOT NULL DEFAULT ''
   )`,
   `CREATE TABLE IF NOT EXISTS pm_groups (
     id TEXT PRIMARY KEY,
@@ -71,7 +71,8 @@ const SCHEMA = [
     type TEXT NOT NULL DEFAULT 'none',
     tg_token TEXT NOT NULL DEFAULT '',
     tg_chat TEXT NOT NULL DEFAULT '',
-    custom_url TEXT NOT NULL DEFAULT ''
+    custom_url TEXT NOT NULL DEFAULT '',
+    remind_expire INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS pm_status_history (
     client_id TEXT NOT NULL,
@@ -89,11 +90,6 @@ const SCHEMA = [
     ms INTEGER,
     t INTEGER NOT NULL DEFAULT 0,
     last_notify INTEGER NOT NULL DEFAULT 0
-  )`,
-  `CREATE TABLE IF NOT EXISTS pm_keepalive (
-    id INTEGER PRIMARY KEY,
-    interval_min INTEGER NOT NULL DEFAULT 5,
-    last_run INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS pm_keepalive_results (
     client_id TEXT PRIMARY KEY,
@@ -114,11 +110,40 @@ function getDB() {
   db = new DatabaseSync(DB_FILE);
   db.exec('PRAGMA journal_mode = WAL');
   for (const sql of SCHEMA) db.exec(sql);
-  
+  const has = new Set(db.prepare('PRAGMA table_info(pm_clients)').all().map((c) => c.name));
+  const wanted = [
+    ['country', "TEXT NOT NULL DEFAULT '其他'"],
+    ['created_at', "TEXT NOT NULL DEFAULT ''"],
+    ['sort_order', 'INTEGER NOT NULL DEFAULT 0'],
+    ['keepalive', 'INTEGER NOT NULL DEFAULT 0'],
+    ['ka_interval', 'INTEGER'],
+    ['ka_ptero', 'INTEGER NOT NULL DEFAULT 0'],
+    ['ka_ptero_url', "TEXT NOT NULL DEFAULT ''"],
+    ['ka_ptero_key', "TEXT NOT NULL DEFAULT ''"],
+    ['ka_ptero_sid', "TEXT NOT NULL DEFAULT ''"],
+    ['renew', 'INTEGER NOT NULL DEFAULT 0'],
+    ['renew_url', "TEXT NOT NULL DEFAULT ''"],
+    ['rn_interval', 'INTEGER'],
+    ['detect_interval', 'INTEGER'],
+    ['renew_mode', 'INTEGER NOT NULL DEFAULT 1'],
+    ['expire_enabled', 'INTEGER NOT NULL DEFAULT 0'],
+    ['expire_date', "TEXT NOT NULL DEFAULT ''"],
+    ['expire_reminded_date', "TEXT NOT NULL DEFAULT ''"],
+  ];
+  for (const [name, def] of wanted) {
+    if (!has.has(name)) {
+      db.exec(`ALTER TABLE pm_clients ADD COLUMN ${name} ${def}`);
+      console.log('[migrate] pm_clients 已自动补充字段：' + name);
+    }
+  }
+  const notifyCols = new Set(db.prepare('PRAGMA table_info(pm_notify)').all().map((c) => c.name));
+  if (!notifyCols.has('remind_expire')) {
+    db.exec('ALTER TABLE pm_notify ADD COLUMN remind_expire INTEGER NOT NULL DEFAULT 0');
+    console.log('[migrate] pm_notify 已自动补充字段：remind_expire');
+  }
   if (get('SELECT COUNT(*) AS n FROM pm_users').n === 0) {
     run('INSERT INTO pm_users (username, password_hash) VALUES (?, ?)', 'admin', bcrypt.hashSync('admin', 10));
   }
-  run('INSERT OR IGNORE INTO pm_keepalive (id, interval_min, last_run) VALUES (1, 5, 0)');
   return db;
 }
 const run = (sql, ...params) => getDB().prepare(sql).run(...params);
@@ -135,7 +160,7 @@ function rawRequest(targetUrl, { method = 'HEAD', timeout = 5000, headers = {}, 
     const req = mod.request(u, {
       method,
       headers: Object.assign({ 'User-Agent': 'Mozilla/5.0 (compatible; PanelManager/1.0)', Accept: '*/*' }, headers),
-      rejectUnauthorized: false, 
+      rejectUnauthorized: false,
       timeout,
     }, (res) => {
       res.resume();
@@ -155,17 +180,33 @@ async function fetchFollow(url, opts, depth = 0) {
   }
   return r;
 }
- 
+function withScheme(u) {
+  const s = String(u || '').trim();
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : 'https://' + s;
+}
+async function probeOne(url, head) {
+  const raw = String(url || '').trim();
+  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
+  const target = hasScheme ? raw : 'https://' + raw;
+  let r = await fetchFollow(target, { method: head ? 'HEAD' : 'GET', timeout: head ? 5000 : 8000 });
+  if (head && (r.code === 405 || r.code === 501)) {
+    r = await fetchFollow(target, { method: 'GET', timeout: 8000 });
+  }
+  if (!hasScheme && r.code === 0) {
+    const t2 = 'http://' + raw;
+    r = await fetchFollow(t2, { method: head ? 'HEAD' : 'GET', timeout: head ? 5000 : 8000 });
+    if (head && (r.code === 405 || r.code === 501)) {
+      r = await fetchFollow(t2, { method: 'GET', timeout: 8000 });
+    }
+  }
+  return r;
+}
 async function probeAll(urlMap, head = true) {
   const entries = Object.entries(urlMap);
   if (entries.length === 0) return {};
   const results = {};
   await Promise.all(entries.map(async ([key, url]) => {
-    let r = await fetchFollow(url, { method: head ? 'HEAD' : 'GET', timeout: head ? 5000 : 8000 });
-
-    if (head && (r.code === 405 || r.code === 501)) {
-      r = await fetchFollow(url, { method: 'GET', timeout: 8000 });
-    }
+    const r = await probeOne(url, head);
     results[key] = { code: r.code || 0, ms: r.ms };
   }));
   return results;
@@ -195,13 +236,11 @@ function rawGetJson(url, key) {
     req.end();
   });
 }
- 
 async function pteroState(base, key, sid) {
   const r = await rawGetJson(`${base.replace(/\/+$/, '')}/api/client/servers/${encodeURIComponent(sid)}/resources`, key);
   if (r.code !== 200) return null;
   try { const d = JSON.parse(r.body); return String((d.attributes || {}).current_state || ''); } catch { return null; }
 }
- 
 async function pteroManualStart(base, key, sid) {
   base = base.replace(/\/+$/, '');
   sid = encodeURIComponent(sid);
@@ -232,11 +271,10 @@ function sendNotification(cfg, title, body) {
   });
 }
 
-const NOTIFY_COOLDOWN = 60;
 const KEEP_HOURS = 48;
 
 function statusLogic() {
-  const clients = all('SELECT id, url, name, country, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode FROM pm_clients ORDER BY sort_order, id');
+  const clients = all('SELECT id, url, name, country, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date, expire_reminded_date FROM pm_clients ORDER BY sort_order, id');
   const now = Math.floor(Date.now() / 1000);
   const hourK = hourKey(new Date(now * 1000));
   const cutoff24 = hourKey(new Date((now - 86400) * 1000));
@@ -251,18 +289,17 @@ function statusLogic() {
       url,
       name: String(row.name || '客户端'),
       country: String(row.country || ''),
-      
       detectIv: Math.max(5, Number(row.detect_interval) || 30),
       kaOn: Number(row.keepalive) === 1,
-      
       kaIv: Number(row.ka_interval || 0),
-      
       kaPtero: Number(row.ka_ptero) === 1 && pUrl !== '' && pKey !== '' && pSid !== '' ? { url: pUrl, key: pKey, sid: pSid } : null,
       renewOn: Number(row.renew) === 1,
       renewMode: Number(row.renew_mode) === 2 ? 2 : 1,
-      
       rnIv: Number(row.rn_interval || 0),
-      rnUrl: /^https?:\/\/.+/i.test(String(row.renew_url || '').trim()) ? String(row.renew_url || '').trim() : '',
+      rnUrl: String(row.renew_url || '').trim() !== '' ? String(row.renew_url || '').trim() : '',
+      expOn: Number(row.expire_enabled) === 1,
+      expDate: String(row.expire_date || '').trim(),
+      expReminded: String(row.expire_reminded_date || '').trim(),
     };
   }
 
@@ -274,7 +311,7 @@ function statusLogic() {
   for (const id of dueIds) { if (cards[id].url !== '') targets[id] = cards[id].url; }
 
   return probeAll(targets).then((probes) => {
-    const notify = get('SELECT type, tg_token, tg_chat, custom_url FROM pm_notify WHERE id = 1') || { type: 'none' };
+    const notify = get('SELECT type, tg_token, tg_chat, custom_url, remind_expire FROM pm_notify WHERE id = 1') || { type: 'none' };
     const lastStates = {};
     all('SELECT client_id, s, ms, t, last_notify FROM pm_status_last').forEach((r) => { lastStates[r.client_id] = r; });
 
@@ -310,17 +347,6 @@ function statusLogic() {
         id, hourK, s, 1, msSum, msN, downs
       );
 
-      if (isTransition && notify.type !== 'none' && now - lastNotify >= NOTIFY_COOLDOWN) {
-        const info = cards[id];
-        const title = s === 1 ? '✅ 客户端恢复在线' : '🔴 客户端掉线';
-        let body = info.name + (info.country !== '' ? `（${info.country}）` : '') + ' · ' + shDateTime(new Date(now * 1000)).slice(11);
-        if (cfg.url !== '') body += '\n' + cfg.url;
-        
-        run('INSERT INTO pm_status_last (client_id, s, ms, t, last_notify) VALUES (?, ?, ?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET s = excluded.s, ms = excluded.ms, t = excluded.t, last_notify = excluded.last_notify',
-          id, s, ms, now, now);
-        sendNotification(notify, title, body);
-        continue;
-      }
       run('INSERT INTO pm_status_last (client_id, s, ms, t, last_notify) VALUES (?, ?, ?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET s = excluded.s, ms = excluded.ms, t = excluded.t, last_notify = excluded.last_notify',
         id, s, ms, now, lastNotify);
     }
@@ -401,7 +427,6 @@ function statusLogic() {
           run('INSERT INTO pm_keepalive_results (client_id, t, code, renew_t, renew_code) VALUES (?, 0, 0, ?, ?) ON CONFLICT(client_id) DO UPDATE SET renew_t = excluded.renew_t, renew_code = excluded.renew_code', kid, now, r.code);
         }
       }
-      
       for (const [kid, cfg] of Object.entries(duePtero)) {
         const probeCode = cfg.url !== '' ? ((probes[kid] || {}).code || 0) : 0;
         let code;
@@ -412,6 +437,25 @@ function statusLogic() {
           code = r.code;
         }
         run('INSERT INTO pm_keepalive_results (client_id, t, code) VALUES (?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET t = excluded.t, code = excluded.code', kid, now, code);
+      }
+
+      if (Number(notify.remind_expire) === 1 && notify.type !== 'none') {
+        for (const [id, cfg] of Object.entries(cards)) {
+          if (!cfg.expOn || cfg.expDate === '' || cfg.expReminded === cfg.expDate) continue;
+          const deadline = shExpireDeadline(cfg.expDate);
+          if (deadline === 0) continue;
+          const left = deadline - now;
+          if (left <= 0 || left >= 86400) continue;
+          const hours = Math.max(1, Math.ceil(left / 3600));
+          const title = '⏰ 客户端即将到期';
+          let body = cfg.name + (cfg.country !== '' ? `（${cfg.country}）` : '')
+            + ` · 将于 ${cfg.expDate} 到期，剩余约 ${hours} 小时`
+            + ' · ' + shDateTime(new Date(now * 1000));
+          if (cfg.url !== '') body += '\n' + cfg.url;
+          const err = await sendNotification(notify, title, body);
+          if (err === null) run('UPDATE pm_clients SET expire_reminded_date = ? WHERE id = ?', cfg.expDate, id);
+          else console.error('[到期提醒] 发送失败：' + err);
+        }
       }
 
       const kaResults = {}, kaRenewals = {};
@@ -434,4 +478,4 @@ function runStatusLogic() {
   return statusRun;
 }
 
-module.exports = { e, attrJson, shDateTime, hourKey, kaIvText, COUNTRIES, getDB, statusLogic, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT, DB_FILE, shTimeHM };
+module.exports = { e, attrJson, shDateTime, withScheme, COUNTRIES, getDB, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT };

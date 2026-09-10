@@ -3,9 +3,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const {
-  e, shDateTime, kaIvText, getDB, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT,
+  e, shDateTime, getDB, runStatusLogic, pteroApi, pteroManualStart, sendNotification, PORT,
 } = require('./core');
-const { loginPage, appPage } = require('./pages');
+const { appPage } = require('./pages');
 
 const app = express();
 app.disable('x-powered-by');
@@ -39,13 +39,13 @@ function verifyCsrf(req) {
 }
 const newId = () => crypto.randomBytes(6).toString('hex');
 
-function parseIntervalMinutes(val, unit) {
+function parseDetectSec(val, unit) {
   const v = String(val ?? '').trim();
   if (v === '') return null;
-  const mult = unit === 'hour' ? 60 : (unit === 'day' ? 1440 : 1);
-  return Math.min(43200, Math.max(1, parseInt(v, 10) || 1) * mult);
+  const mult = unit === 'min' ? 60 : (unit === 'hour' ? 3600 : (unit === 'day' ? 86400 : 1));
+  return Math.max(5, Math.min(86400, (parseInt(v, 10) || 0) * mult));
 }
- 
+
 function parseMinutesAllowZero(val, unit) {
   const v = String(val ?? '').trim();
   if (v === '') return null;
@@ -54,7 +54,6 @@ function parseMinutesAllowZero(val, unit) {
 }
 
 app.get('/', async (req, res) => {
-  if (!loggedIn(req)) return res.send(loginPage(''));
   try {
     res.send(appPage(buildAppData(req)));
   } catch (err) {
@@ -62,16 +61,7 @@ app.get('/', async (req, res) => {
   }
 });
 
-app.get('/guest', (req, res) => {
-  sessions.delete(req.sid);
-  const sid = crypto.randomBytes(24).toString('hex');
-  sessions.set(sid, { user: 'guest', csrf: crypto.randomBytes(16).toString('hex'), fails: 0, lastFail: 0 });
-  res.setHeader('Set-Cookie', `pmsid=${sid}; Path=/; HttpOnly; SameSite=Lax`);
-  return res.redirect('/');
-});
-
 app.get('/status', async (req, res) => {
-  if (!loggedIn(req)) return res.status(401).json({ error: '未登录' });
   try {
     res.set('Cache-Control', 'no-store').json(await runStatusLogic());
   } catch (err) {
@@ -87,14 +77,14 @@ app.post('/', async (req, res) => {
     const fails = Number(req.session.fails || 0);
     const lastFail = Number(req.session.lastFail || 0);
     if (fails >= 5 && Date.now() / 1000 - lastFail < 60) {
-      return res.send(loginPage('失败次数过多，请 1 分钟后再试'));
+      const d0 = buildAppData(req); d0.loginError = '失败次数过多，请 1 分钟后再试';
+      return res.send(appPage(d0));
     }
     let hash = '';
     try { hash = String(getDB().prepare('SELECT password_hash FROM pm_users WHERE username = ?').get(name)?.password_hash || ''); } catch { hash = ''; }
     if (hash && bcrypt.compareSync(String(req.body.password || ''), hash)) {
       req.session.user = name;
       delete req.session.fails; delete req.session.lastFail;
-      
       sessions.delete(req.sid);
       const sid = crypto.randomBytes(24).toString('hex');
       sessions.set(sid, { user: name, csrf: crypto.randomBytes(16).toString('hex'), fails: 0, lastFail: 0 });
@@ -104,7 +94,8 @@ app.post('/', async (req, res) => {
     req.session.fails = fails + 1;
     req.session.lastFail = Math.floor(Date.now() / 1000);
     await new Promise((r) => setTimeout(r, 500));
-    return res.send(loginPage('用户名或密码错误'));
+    const d1 = buildAppData(req); d1.loginError = '用户名或密码错误';
+    return res.send(appPage(d1));
   }
 
   if (action === 'logout') {
@@ -114,8 +105,6 @@ app.post('/', async (req, res) => {
   }
 
   if (!loggedIn(req)) return res.redirect('/');
-  
-  if (req.session.user === 'guest') return res.redirect('/');
   if (!verifyCsrf(req)) return;
   const b = req.body;
   const db = getDB();
@@ -126,7 +115,7 @@ app.post('/', async (req, res) => {
     switch (action) {
       case 'add_client': {
         const url = String(b.url || '').trim();
-        if (!/^https?:\/\/.+\..+/i.test(url)) return render({ error: '请输入有效的客户端网址（需包含 http:// 或 https://）' });
+        if (!/^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?([\/?#].*)?$/i.test(url)) return render({ error: '请输入有效的客户端网址（如 example.com，可不带 http:// 或 https:// 前缀）' });
         const mx = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS mx FROM pm_clients').get().mx;
         db.prepare('INSERT INTO pm_clients (id, name, country, url, created_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
           .run(newId(), String(b.name || '').trim() || '未命名客户端', String(b.country || '').trim() || '其他', url, shDateTime(new Date()), mx);
@@ -134,17 +123,28 @@ app.post('/', async (req, res) => {
       }
       case 'edit_client': {
         const url = String(b.url || '').trim();
-        if (!/^https?:\/\/.+\..+/i.test(url)) return render({ error: '请输入有效的客户端网址（需包含 http:// 或 https://）' });
-        const detectSec = /^\d+$/.test(String(b.detect_interval || '').trim()) ? Math.max(5, Math.min(86400, parseInt(b.detect_interval, 10))) : null;
+        if (!/^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?([\/?#].*)?$/i.test(url)) return render({ error: '请输入有效的客户端网址（如 example.com，可不带 http:// 或 https:// 前缀）' });
+        const detectSec = parseDetectSec(b.detect_interval, b.detect_interval_unit);
         const rnMode = b.renew_mode === '2' ? 2 : 1;
-        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ?, detect_interval = ?, renew_mode = ? WHERE id = ?')
+        const expOn = b.expire_enabled ? 1 : 0;
+        let expDate = '';
+        if (expOn) {
+          const ey = String(b.expire_y || '').trim(), em = String(b.expire_m || '').trim(), ed = String(b.expire_d || '').trim();
+          if (/^\d{4}$/.test(ey) && /^\d{1,2}$/.test(em) && /^\d{1,2}$/.test(ed)) {
+            const yy = Number(ey), mm = Number(em), dd = Number(ed);
+            const dt = new Date(yy, mm - 1, dd);
+            if (dt.getFullYear() === yy && dt.getMonth() === mm - 1 && dt.getDate() === dd) expDate = ey + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+          }
+          if (expDate === '') return render({ error: '请选择有效的到期日期（年 / 月 / 日）' });
+        }
+        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ?, detect_interval = ?, renew_mode = ?, expire_enabled = ?, expire_date = ? WHERE id = ?')
           .run(
             String(b.name || '').trim() || '未命名客户端', String(b.country || '').trim() || '其他', url,
             parseMinutesAllowZero(b.ka_interval, b.ka_interval_unit),
             b.ka_ptero ? 1 : 0, String(b.ka_ptero_url || '').trim(), String(b.ka_ptero_key || '').trim(), String(b.ka_ptero_sid || '').trim(),
             String(b.renew_url || '').trim(),
             parseMinutesAllowZero(b.rn_interval, b.rn_interval_unit),
-            detectSec, rnMode,
+            detectSec, rnMode, expOn, expDate,
             String(b.id || '')
           );
         return res.redirect('/');
@@ -194,6 +194,7 @@ app.post('/', async (req, res) => {
         if (payload && typeof payload === 'object') {
           const order = Array.isArray(payload.order) ? payload.order.map(String) : [];
           const membership = payload.membership && typeof payload.membership === 'object' ? payload.membership : {};
+          const groupOrder = Array.isArray(payload.groupOrder) ? payload.groupOrder.map(String) : [];
           db.exec('BEGIN');
           try {
             const st = db.prepare('UPDATE pm_clients SET sort_order = ? WHERE id = ?');
@@ -201,10 +202,12 @@ app.post('/', async (req, res) => {
             const del = db.prepare('DELETE FROM pm_group_members WHERE group_id = ?');
             const ins = db.prepare('INSERT INTO pm_group_members (group_id, client_id, sort_order) VALUES (?, ?, ?)');
             for (const [gid, ids] of Object.entries(membership)) {
-              if (gid === '') continue; 
+              if (gid === '') continue;
               del.run(gid);
               (Array.isArray(ids) ? ids.map(String) : []).forEach((cid, i) => ins.run(gid, cid, i));
             }
+            const gst = db.prepare('UPDATE pm_groups SET sort_order = ? WHERE id = ?');
+            groupOrder.forEach((gid, i) => gst.run(i, gid));
             db.exec('COMMIT');
           } catch (err) {
             db.exec('ROLLBACK');
@@ -225,8 +228,8 @@ app.post('/', async (req, res) => {
       }
       case 'save_notify': {
         const type = ['none', 'telegram', 'custom'].includes(b.notify_type) ? b.notify_type : 'none';
-        db.prepare('INSERT INTO pm_notify (id, type, tg_token, tg_chat, custom_url) VALUES (1, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET type = excluded.type, tg_token = excluded.tg_token, tg_chat = excluded.tg_chat, custom_url = excluded.custom_url')
-          .run(type, String(b.tg_token || '').trim(), String(b.tg_chat || '').trim(), String(b.custom_url || '').trim());
+        db.prepare('INSERT INTO pm_notify (id, type, tg_token, tg_chat, custom_url, remind_expire) VALUES (1, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET type = excluded.type, tg_token = excluded.tg_token, tg_chat = excluded.tg_chat, custom_url = excluded.custom_url, remind_expire = excluded.remind_expire')
+          .run(type, String(b.tg_token || '').trim(), String(b.tg_chat || '').trim(), String(b.custom_url || '').trim(), b.remind_expire ? 1 : 0);
         return res.redirect('/');
       }
       case 'test_notify': {
@@ -241,7 +244,6 @@ app.post('/', async (req, res) => {
         if (id !== '') {
           db.prepare('UPDATE pm_clients SET keepalive = 1 - keepalive WHERE id = ?').run(id);
           on = Number(db.prepare('SELECT keepalive FROM pm_clients WHERE id = ?').get(id)?.keepalive) === 1;
-          
           db.prepare('INSERT INTO pm_keepalive_results (client_id, t, code) VALUES (?, 0, 0) ON CONFLICT(client_id) DO UPDATE SET t = 0, code = 0').run(id);
         }
         return json({ ok: true, on });
@@ -252,7 +254,6 @@ app.post('/', async (req, res) => {
         if (id !== '') {
           db.prepare('UPDATE pm_clients SET renew = 1 - renew WHERE id = ?').run(id);
           on = Number(db.prepare('SELECT renew FROM pm_clients WHERE id = ?').get(id)?.renew) === 1;
-          
           db.prepare('INSERT INTO pm_keepalive_results (client_id, t, code, renew_t, renew_code) VALUES (?, 0, 0, 0, 0) ON CONFLICT(client_id) DO UPDATE SET renew_t = 0, renew_code = 0').run(id);
         }
         return json({ ok: true, on });
@@ -288,26 +289,21 @@ function buildAppData(req, error, success) {
   const db = getDB();
   const userRow = db.prepare('SELECT password_hash FROM pm_users WHERE username = ?').get('admin');
   const weakPassword = userRow ? bcrypt.compareSync('admin', String(userRow.password_hash)) : false;
-  const notify = db.prepare('SELECT type, tg_token, tg_chat, custom_url FROM pm_notify WHERE id = 1').get() || { type: 'none', tg_token: '', tg_chat: '', custom_url: '' };
-  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode FROM pm_clients ORDER BY sort_order, id').all();
+  const notify = db.prepare('SELECT type, tg_token, tg_chat, custom_url, remind_expire FROM pm_notify WHERE id = 1').get() || { type: 'none', tg_token: '', tg_chat: '', custom_url: '', remind_expire: 0 };
+  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date FROM pm_clients ORDER BY sort_order, id').all();
   const groups = db.prepare('SELECT id, name FROM pm_groups ORDER BY sort_order, id').all();
   const memberMap = {};
   db.prepare('SELECT group_id, client_id FROM pm_group_members ORDER BY sort_order, client_id').all()
     .forEach((m) => { (memberMap[m.group_id] = memberMap[m.group_id] || []).push(m.client_id); });
   groups.forEach((g) => { g.client_ids = memberMap[g.id] || []; });
-  const kaRow = db.prepare('SELECT interval_min FROM pm_keepalive WHERE id = 1').get();
-  const kaInterval = kaRow ? Math.max(1, Number(kaRow.interval_min)) : 5;
-  let kaGV = kaInterval, kaGU = 'min';
-  if (kaInterval % 1440 === 0) { kaGV = kaInterval / 1440; kaGU = 'day'; }
-  else if (kaInterval % 60 === 0) { kaGV = kaInterval / 60; kaGU = 'hour'; }
   return {
     csrf: req.session.csrf, user: req.session.user, weakPassword, error: error || '', success: success || '',
-    clients, groups, notify, kaInterval, kaGV, kaGU,
-    isGuest: req.session.user === 'guest',
+    clients, groups, notify,
+    isGuest: !loggedIn(req),
   };
 }
 
-getDB(); 
+getDB();
 app.listen(PORT, () => {
   console.log('Panel Manager (SQLite) 已启动: http://127.0.0.1:' + PORT);
   console.log('默认管理员：admin / admin（登录后请立即修改）。数据库文件：data/panel.db');
