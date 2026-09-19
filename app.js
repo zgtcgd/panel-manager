@@ -125,7 +125,8 @@ app.post('/', async (req, res) => {
         const url = String(b.url || '').trim();
         if (!/^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?([\/?#].*)?$/i.test(url)) return render({ error: '请输入有效的客户端网址（如 example.com，可不带 http:// 或 https:// 前缀）' });
         const detectSec = parseDetectSec(b.detect_interval, b.detect_interval_unit);
-        const rnMode = b.renew_mode === '2' ? 2 : 1;
+        const rnMode = b.renew_mode === '1' ? 1 : 2;
+        const kaMode = b.ka_mode === '1' ? 1 : 2;
         const expOn = b.expire_enabled ? 1 : 0;
         let expDate = '';
         if (expOn) {
@@ -137,9 +138,10 @@ app.post('/', async (req, res) => {
           }
           if (expDate === '') return render({ error: '请选择有效的到期日期（年 / 月 / 日）' });
         }
-        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ?, detect_interval = ?, renew_mode = ?, expire_enabled = ?, expire_date = ? WHERE id = ?')
+        db.prepare('UPDATE pm_clients SET name = ?, country = ?, url = ?, ka_mode = ?, ka_interval = ?, ka_ptero = ?, ka_ptero_url = ?, ka_ptero_key = ?, ka_ptero_sid = ?, renew_url = ?, rn_interval = ?, detect_interval = ?, renew_mode = ?, expire_enabled = ?, expire_date = ? WHERE id = ?')
           .run(
             String(b.name || '').trim() || '未命名客户端', String(b.country || '').trim() || '其他', url,
+            kaMode,
             parseMinutesAllowZero(b.ka_interval, b.ka_interval_unit),
             b.ka_ptero ? 1 : 0, String(b.ka_ptero_url || '').trim(), String(b.ka_ptero_key || '').trim(), String(b.ka_ptero_sid || '').trim(),
             String(b.renew_url || '').trim(),
@@ -290,7 +292,7 @@ function buildAppData(req, error, success) {
   const userRow = db.prepare('SELECT password_hash FROM pm_users WHERE username = ?').get('admin');
   const weakPassword = userRow ? bcrypt.compareSync('admin', String(userRow.password_hash)) : false;
   const notify = db.prepare('SELECT type, tg_token, tg_chat, custom_url, remind_expire FROM pm_notify WHERE id = 1').get() || { type: 'none', tg_token: '', tg_chat: '', custom_url: '', remind_expire: 0 };
-  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date FROM pm_clients ORDER BY sort_order, id').all();
+  const clients = db.prepare('SELECT id, name, country, url, created_at, keepalive, ka_mode, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date FROM pm_clients ORDER BY sort_order, id').all();
   const groups = db.prepare('SELECT id, name FROM pm_groups ORDER BY sort_order, id').all();
   const memberMap = {};
   db.prepare('SELECT group_id, client_id FROM pm_group_members ORDER BY sort_order, client_id').all()

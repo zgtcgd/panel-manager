@@ -41,6 +41,7 @@ const SCHEMA = [
     created_at TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0,
     keepalive INTEGER NOT NULL DEFAULT 0,
+    ka_mode INTEGER NOT NULL DEFAULT 2,
     ka_interval INTEGER,
     ka_ptero INTEGER NOT NULL DEFAULT 0,
     ka_ptero_url TEXT NOT NULL DEFAULT '',
@@ -50,7 +51,7 @@ const SCHEMA = [
     renew_url TEXT NOT NULL DEFAULT '',
     rn_interval INTEGER,
     detect_interval INTEGER,
-    renew_mode INTEGER NOT NULL DEFAULT 1,
+    renew_mode INTEGER NOT NULL DEFAULT 2,
     expire_enabled INTEGER NOT NULL DEFAULT 0,
     expire_date TEXT NOT NULL DEFAULT '',
     expire_reminded_date TEXT NOT NULL DEFAULT ''
@@ -116,6 +117,7 @@ function getDB() {
     ['created_at', "TEXT NOT NULL DEFAULT ''"],
     ['sort_order', 'INTEGER NOT NULL DEFAULT 0'],
     ['keepalive', 'INTEGER NOT NULL DEFAULT 0'],
+    ['ka_mode', 'INTEGER NOT NULL DEFAULT 2'],
     ['ka_interval', 'INTEGER'],
     ['ka_ptero', 'INTEGER NOT NULL DEFAULT 0'],
     ['ka_ptero_url', "TEXT NOT NULL DEFAULT ''"],
@@ -125,7 +127,7 @@ function getDB() {
     ['renew_url', "TEXT NOT NULL DEFAULT ''"],
     ['rn_interval', 'INTEGER'],
     ['detect_interval', 'INTEGER'],
-    ['renew_mode', 'INTEGER NOT NULL DEFAULT 1'],
+    ['renew_mode', 'INTEGER NOT NULL DEFAULT 2'],
     ['expire_enabled', 'INTEGER NOT NULL DEFAULT 0'],
     ['expire_date', "TEXT NOT NULL DEFAULT ''"],
     ['expire_reminded_date', "TEXT NOT NULL DEFAULT ''"],
@@ -274,7 +276,7 @@ function sendNotification(cfg, title, body) {
 const KEEP_HOURS = 48;
 
 function statusLogic() {
-  const clients = all('SELECT id, url, name, country, keepalive, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date, expire_reminded_date FROM pm_clients ORDER BY sort_order, id');
+  const clients = all('SELECT id, url, name, country, keepalive, ka_mode, ka_interval, ka_ptero, ka_ptero_url, ka_ptero_key, ka_ptero_sid, renew, renew_url, rn_interval, detect_interval, renew_mode, expire_enabled, expire_date, expire_reminded_date FROM pm_clients ORDER BY sort_order, id');
   const now = Math.floor(Date.now() / 1000);
   const hourK = hourKey(new Date(now * 1000));
   const cutoff24 = hourKey(new Date((now - 86400) * 1000));
@@ -291,10 +293,11 @@ function statusLogic() {
       country: String(row.country || ''),
       detectIv: Math.max(5, Number(row.detect_interval) || 30),
       kaOn: Number(row.keepalive) === 1,
+      kaMode: Number(row.ka_mode) === 2 ? 2 : 1,
       kaIv: Number(row.ka_interval || 0),
       kaPtero: Number(row.ka_ptero) === 1 && pUrl !== '' && pKey !== '' && pSid !== '' ? { url: pUrl, key: pKey, sid: pSid } : null,
       renewOn: Number(row.renew) === 1,
-      renewMode: Number(row.renew_mode) === 2 ? 2 : 1,
+      renewMode: Number(row.renew_mode) === 1 ? 1 : 2,
       rnIv: Number(row.rn_interval || 0),
       rnUrl: String(row.renew_url || '').trim() !== '' ? String(row.renew_url || '').trim() : '',
       expOn: Number(row.expire_enabled) === 1,
@@ -388,22 +391,28 @@ function statusLogic() {
       const probeCode = cfg.url !== '' ? ((probes[id] || {}).code || 0) : 0;
       const offline = !(probeCode >= 200 && probeCode < 500);
 
-      if (cfg.kaOn && cfg.url !== '' && offline) {
-        const iv = cfg.kaIv > 0 ? cfg.kaIv * 60 : 0;
-        const lastT = kaPrev[id] || 0;
-        if (iv <= 0 || now - lastT >= iv) {
+      if (cfg.kaOn && cfg.url !== '') {
+        let due = false;
+        if (cfg.kaMode === 1) {
+          due = offline;
+        } else {
+          const iv = cfg.kaIv > 0 ? cfg.kaIv * 60 : 0;
+          const lastT = kaPrev[id] || 0;
+          due = iv <= 0 || now - lastT >= iv;
+        }
+        if (due) {
           if (cfg.kaPtero) duePtero[id] = cfg.kaPtero;
           else dueKa[id] = cfg.url;
         }
       }
 
       if (cfg.renewOn && cfg.rnUrl !== '') {
-        if (cfg.renewMode === 2) {
+        if (cfg.renewMode === 1) {
+          if (offline) dueRenewMode1[id] = cfg.rnUrl;
+        } else {
           const iv = cfg.rnIv > 0 ? cfg.rnIv * 60 : 0;
           const lastT = kaPrevR[id] || 0;
           if (iv <= 0 || now - lastT >= iv) dueRenewMode2[id] = cfg.rnUrl;
-        } else if (offline) {
-          dueRenewMode1[id] = cfg.rnUrl;
         }
       }
     }
